@@ -1,0 +1,30 @@
+# Build output
+/chatsphere
+/chatsphere.exe
+
+# Configuration (contains credentials — never commit)
+config.yaml
+
+# Go
+vendor/
+*.test
+*.out
+coverage.txt
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# Docker volumes
+postgres_data/
+mysql_data/
+redis_data/

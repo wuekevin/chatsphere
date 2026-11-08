@@ -1,0 +1,53 @@
+services:
+
+  # ── ChatSphere application ────────────────────────────────────────────────────
+  chatsphere:
+    image: chatsphere:latest
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    environment:
+      TZ: UTC
+
+  # ── MySQL 8.0 ─────────────────────────────────────────────────────────────────
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: chatsphere
+      MYSQL_USER: chatsphere
+      MYSQL_PASSWORD: chatsphere
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ── Redis 7 ───────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+  redis_data:

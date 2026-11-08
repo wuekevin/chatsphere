@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ChatSphere Admin</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --g:#22c55e;--gd:#16a34a;--gl:#dcfce7;
+  --bg:#f9fafb;--white:#fff;--text:#111827;--muted:#6b7280;
+  --border:#e5e7eb;--sidebar:#111827;--sidebar-text:#9ca3af;
+  --danger:#ef4444;--warn:#f59e0b;--info:#3b82f6;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex}
+
+/* Sidebar */
+#sidebar{width:220px;min-height:100vh;background:var(--sidebar);display:flex;flex-direction:column;flex-shrink:0;position:sticky;top:0;height:100vh;overflow-y:auto}
+.logo{display:flex;align-items:center;gap:10px;padding:20px 16px;border-bottom:1px solid rgba(255,255,255,.08)}
+.logo-icon{width:34px;height:34px;background:var(--g);border-radius:8px;display:flex;align-items:center;justify-content:center}
+.logo-icon svg{width:20px;height:20px;fill:white}
+.logo-name{color:white;font-size:16px;font-weight:700;letter-spacing:-.3px}
+.logo-ver{color:#6b7280;font-size:11px}
+nav{padding:12px 8px;flex:1}
+.nav-section{font-size:10px;font-weight:600;color:#4b5563;text-transform:uppercase;letter-spacing:.8px;padding:8px 10px 4px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;cursor:pointer;color:var(--sidebar-text);font-size:13px;font-weight:500;transition:all .15s;text-decoration:none;user-select:none;margin-bottom:1px}
+.nav-item:hover{background:rgba(255,255,255,.07);color:white}
+.nav-item.active{background:rgba(34,197,94,.18);color:#4ade80}
+.nav-item svg{width:17px;height:17px;fill:currentColor;flex-shrink:0}
+.sidebar-footer{padding:12px;border-top:1px solid rgba(255,255,255,.08)}
+.admin-pill{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;background:rgba(255,255,255,.06)}
+.admin-avatar{width:28px;height:28px;border-radius:50%;background:var(--g);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:white}
+.admin-name{color:white;font-size:12px;font-weight:600}
+.admin-role{color:#6b7280;font-size:10px}
+.logout-btn{background:none;border:none;color:#6b7280;cursor:pointer;font-size:11px;margin-top:8px;width:100%;text-align:center;transition:color .15s}
+.logout-btn:hover{color:#ef4444}
+
+/* Main */
+#main{flex:1;overflow:hidden;display:flex;flex-direction:column}
+.topbar{background:var(--white);border-bottom:1px solid var(--border);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.topbar-title{font-size:17px;font-weight:700}
+.topbar-right{display:flex;align-items:center;gap:12px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .15s}
+.btn-primary{background:var(--g);color:white}.btn-primary:hover{background:var(--gd)}
+.btn-danger{background:var(--danger);color:white}.btn-danger:hover{background:#dc2626}
+.btn-outline{background:transparent;border:1.5px solid var(--border);color:var(--muted)}.btn-outline:hover{border-color:var(--g);color:var(--g)}
+.btn-sm{padding:5px 12px;font-size:12px}
+.btn-xs{padding:3px 8px;font-size:11px}
+.content{flex:1;overflow-y:auto;padding:24px}
+
+/* Stat cards */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:16px;margin-bottom:24px}
+.stat-card{background:var(--white);border-radius:12px;padding:20px;border:1px solid var(--border)}
+.stat-card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.stat-icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center}
+.stat-icon.g{background:var(--gl)}.stat-icon.g svg{fill:var(--gd)}
+.stat-icon.b{background:#dbeafe}.stat-icon.b svg{fill:#1d4ed8}
+.stat-icon.o{background:#ffedd5}.stat-icon.o svg{fill:#c2410c}
+.stat-icon.r{background:#fee2e2}.stat-icon.r svg{fill:#dc2626}
+.stat-icon svg{width:20px;height:20px}
+.stat-num{font-size:28px;font-weight:800;line-height:1}
+.stat-label{font-size:12px;color:var(--muted);margin-top:4px}
+
+/* Table */
+.table-wrap{background:var(--white);border-radius:12px;border:1px solid var(--border);overflow:hidden}
+.table-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px}
+.table-header h3{font-size:15px;font-weight:700}
+.search-box{display:flex;align-items:center;gap:8px;border:1.5px solid var(--border);border-radius:8px;padding:6px 12px;font-size:13px;background:var(--bg)}
+.search-box input{border:none;outline:none;background:transparent;font-size:13px;width:160px;color:var(--text)}
+.search-box svg{width:15px;height:15px;fill:var(--muted);flex-shrink:0}
+table{width:100%;border-collapse:collapse}
+th{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);padding:10px 16px;text-align:left;background:#f8fafc;border-bottom:1px solid var(--border)}
+td{padding:12px 16px;border-bottom:1px solid #f3f4f6;font-size:13px;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#fafafa}
+.badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600}
+.badge-green{background:var(--gl);color:#15803d}
+.badge-blue{background:#dbeafe;color:#1e40af}
+.badge-red{background:#fee2e2;color:#991b1b}
+.badge-gray{background:#f3f4f6;color:#374151}
+.badge-yellow{background:#fef9c3;color:#854d0e}
+.user-cell{display:flex;align-items:center;gap:10px}
+.u-avatar{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:white;flex-shrink:0}
+.u-name{font-weight:600;font-size:13px}
+.u-email{font-size:11px;color:var(--muted)}
+.actions-cell{display:flex;gap:6px;flex-wrap:wrap}
+
+/* Forms / Modals */
+.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:999;padding:16px}
+.modal{background:var(--white);border-radius:16px;padding:28px;width:100%;max-width:480px;box-shadow:0 20px 60px rgba(0,0,0,.15)}
+.modal h3{font-size:17px;font-weight:700;margin-bottom:16px}
+.form-group{margin-bottom:16px}
+.form-row-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+label{display:block;font-size:12px;font-weight:600;margin-bottom:5px;color:#374151}
+input,select,textarea{width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;outline:none;font-family:inherit;color:var(--text);background:var(--white)}
+input:focus,select:focus,textarea:focus{border-color:var(--g)}
+textarea{resize:vertical;min-height:80px}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0}
+.toggle{position:relative;display:inline-flex;width:38px;height:21px}
+.toggle input{opacity:0;width:0;height:0}
+.slider{position:absolute;inset:0;background:#d1d5db;border-radius:11px;cursor:pointer;transition:.3s}
+.slider::before{content:'';position:absolute;width:15px;height:15px;left:3px;top:3px;background:white;border-radius:50%;transition:.3s}
+.toggle input:checked+.slider{background:var(--g)}
+.toggle input:checked+.slider::before{transform:translateX(17px)}
+.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:20px}
+
+/* Pagination */
+.pagination{display:flex;align-items:center;justify-content:center;gap:4px;margin-top:16px}
+.page-btn{width:32px;height:32px;border-radius:6px;border:1.5px solid var(--border);background:var(--white);cursor:pointer;font-size:13px;font-weight:500;transition:all .15s;display:flex;align-items:center;justify-content:center}
+.page-btn.active{background:var(--g);border-color:var(--g);color:white}
+.page-btn:hover:not(.active){border-color:var(--g);color:var(--g)}
+
+/* Misc */
+.empty-state{text-align:center;padding:48px 24px;color:var(--muted)}
+.empty-state svg{width:40px;height:40px;fill:var(--border);margin-bottom:12px}
+.empty-state p{font-size:14px}
+.tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;background:#f3f4f6;color:#374151}
+.msg-content{max-width:360px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
+.embed-box{background:#1e293b;border-radius:8px;padding:14px;font-family:'Courier New',monospace;font-size:12px;color:#94a3b8;white-space:pre;overflow-x:auto;margin-bottom:12px}
+.embed-box .hl{color:#4ade80}
+.section-tabs{display:flex;gap:2px;background:#f3f4f6;border-radius:8px;padding:3px;margin-bottom:20px}
+.tab{padding:7px 16px;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;color:var(--muted)}
+.tab.active{background:var(--white);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.notice{padding:12px 16px;border-radius:8px;font-size:13px;margin-bottom:16px}
+.notice-info{background:#eff6ff;color:#1e40af;border:1px solid #bfdbfe}
+.notice-warn{background:#fffbeb;color:#78350f;border:1px solid #fde68a}
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<aside id="sidebar">
+  <div class="logo">
+    <div class="logo-icon">
+      <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+    </div>
+    <div>
+      <div class="logo-name">ChatSphere</div>
+      <div class="logo-ver">v1.0</div>
+    </div>
+  </div>
+  <nav>
+    <div class="nav-section">Overview</div>
+    <a class="nav-item active" onclick="show('dashboard')">
+      <svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>Dashboard
+    </a>
+    <div class="nav-section">Content</div>
+    <a class="nav-item" onclick="show('channels')">
+      <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 10H6v-2h12v2zm0-3H6V7h12v2z"/></svg>Channels
+    </a>
+    <a class="nav-item" onclick="show('messages')">
+      <svg viewBox="0 0 24 24"><path d="M21.99 4c0-1.1-.89-2-1.99-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4-.01-18z"/></svg>Messages
+    </a>
+    <a class="nav-item" onclick="show('reports')">
+      <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>Reports
+      <span id="report-badge" style="margin-left:auto;background:#ef4444;color:white;font-size:10px;padding:1px 6px;border-radius:9px;display:none"></span>
+    </a>
+    <div class="nav-section">People</div>
+    <a class="nav-item" onclick="show('users')">
+      <svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>Users
+    </a>
+    <div class="nav-section">Configure</div>
+    <a class="nav-item" onclick="show('widget')">
+      <svg viewBox="0 0 24 24"><path d="M20.5 11H19V7c0-1.1-.9-2-2-2h-4V3.5C13 2.12 11.88 1 10.5 1S8 2.12 8 3.5V5H4c-1.1 0-1.99.9-1.99 2v3.8H3.5c1.49 0 2.7 1.21 2.7 2.7s-1.21 2.7-2.7 2.7H2V20c0 1.1.9 2 2 2h3.8v-1.5c0-1.49 1.21-2.7 2.7-2.7 1.49 0 2.7 1.21 2.7 2.7V22H17c1.1 0 2-.9 2-2v-4h1.5c1.38 0 2.5-1.12 2.5-2.5S21.88 11 20.5 11z"/></svg>Widget & Embed
+    </a>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="admin-pill">
+      <div class="admin-avatar" id="sidebar-avatar">A</div>
+      <div>
+        <div class="admin-name" id="sidebar-name">Admin</div>
+        <div class="admin-role">Super Admin</div>
+      </div>
+    </div>
+    <button class="logout-btn" onclick="logout()">Sign Out</button>
+  </div>
+</aside>
+
+<!-- Main -->
+<div id="main">
+  <!-- Login screen -->
+  <div id="login-screen" style="flex:1;display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg)">
+    <div style="background:white;border-radius:16px;padding:36px;width:380px;box-shadow:0 4px 24px rgba(0,0,0,.08)">
+      <div style="text-align:center;margin-bottom:28px">
+        <div style="width:52px;height:52px;background:#22c55e;border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 12px">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="white"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+        </div>
+        <h2 style="font-size:20px;font-weight:800">ChatSphere Admin</h2>
+        <p style="font-size:13px;color:#6b7280;margin-top:4px">Sign in to manage your instance</p>
+      </div>
+      <div class="form-group">
+        <label>Username</label>
+        <input id="l-user" type="text" placeholder="admin" autocomplete="username">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input id="l-pass" type="password" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <div id="l-err" style="color:#ef4444;font-size:12px;margin:-8px 0 12px;min-height:16px"></div>
+      <button class="btn btn-primary" style="width:100%;padding:11px" onclick="doLogin()">Sign In</button>
+    </div>
+  </div>
+
+  <!-- App shell (hidden until logged in) -->
+  <div id="app-shell" style="display:none;flex:1;flex-direction:column">
+
+    <div class="topbar">
+      <div class="topbar-title" id="page-title">Dashboard</div>
+      <div class="topbar-right">
+        <span id="topbar-domain" style="font-size:12px;color:#6b7280"></span>
+      </div>
+    </div>
+
+    <div class="content" id="content">
+      <!-- Loaded dynamically -->
+    </div>
+  </div>
+</div>
+
+<!-- Modal container -->
+<div id="modal-container"></div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+const state = { token: null, user: null, channels: [], currentPage: 'dashboard' }
+
+// ── API ───────────────────────────────────────────────────────────────────────
+const api = {
+  base: '/admin/api',
+  async req(method, path, body) {
+    const opts = { method, headers: { 'Content-Type': 'application/json' } }
+    if (state.token) opts.headers['Authorization'] = 'Bearer ' + state.token
+    if (body) opts.body = JSON.stringify(body)
+    const r = await fetch(this.base + path, opts)
+    if (r.status === 401) { logout(); return null }
+    return r.json()
+  },
+  get(p)    { return this.req('GET', p) },
+  post(p,b) { return this.req('POST', p, b) },
+  put(p,b)  { return this.req('PUT', p, b) },
+  del(p)    { return this.req('DELETE', p) },
+}
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+async function doLogin() {
+  const user = document.getElementById('l-user').value.trim()
+  const pass = document.getElementById('l-pass').value
+  if (!user || !pass) return
+  try {
+    const r = await fetch('/api/auth/login', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({username: user, password: pass})
+    })
+    const d = await r.json()
+    if (!d.token || d.user?.role !== 'admin') {
+      document.getElementById('l-err').textContent = 'Invalid credentials or insufficient permission.'
+      return
+    }
+    state.token = d.token; state.user = d.user
+    localStorage.setItem('cs_admin_token', d.token)
+    showApp()
+  } catch(e) {
+    document.getElementById('l-err').textContent = 'Connection error.'
+  }
+}
+
+function logout() {
+  state.token = null; state.user = null
+  localStorage.removeItem('cs_admin_token')
+  document.getElementById('app-shell').style.display = 'none'
+  document.getElementById('login-screen').style.display = 'flex'
+}
+
+function showApp() {
+  document.getElementById('login-screen').style.display = 'none'
+  document.getElementById('app-shell').style.display = 'flex'
+  if (state.user) {
+    document.getElementById('sidebar-name').textContent = state.user.username
+    document.getElementById('sidebar-avatar').textContent = state.user.username[0].toUpperCase()
+    document.getElementById('topbar-domain').textContent = window.location.hostname
+  }
+  show('dashboard')
+  loadStats()
+}
+
+// Auto-login from localStorage
+window.addEventListener('DOMContentLoaded', async () => {
+  const t = localStorage.getItem('cs_admin_token')
+  if (t) {
+    state.token = t
+    const d = await api.get('/stats')
+    if (d) {
+      const me = await fetch('/api/auth/me', {headers:{'Authorization':'Bearer '+t}}).then(r=>r.json())
+      if (me?.user?.role === 'admin') { state.user = me.user; showApp(); return }
+    }
+    localStorage.removeItem('cs_admin_token')
+    state.token = null
+  }
+  document.getElementById('login-screen').style.display = 'flex'
+  document.getElementById('l-user').addEventListener('keydown', e => e.key==='Enter' && doLogin())
+  document.getElementById('l-pass').addEventListener('keydown', e => e.key==='Enter' && doLogin())
+})
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+function show(page) {
+  state.currentPage = page
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'))
+  const map = {dashboard:0,channels:1,messages:2,reports:3,users:4,widget:5}
+  const items = document.querySelectorAll('.nav-item')
+  if (items[map[page]]) items[map[page]].classList.add('active')
+  const titles = {dashboard:'Dashboard',channels:'Channels',messages:'Messages',reports:'Reports',users:'Users',widget:'Widget & Embed'}
+  document.getElementById('page-title').textContent = titles[page] || page
+  const fns = {dashboard:renderDashboard,channels:renderChannels,messages:renderMessages,reports:renderReports,users:renderUsers,widget:renderWidget}
+  if (fns[page]) fns[page]()
+}
+
+// ── Dashboard ─────────────────────────────────────────────────────────────────
+let stats = {}
+async function loadStats() { stats = await api.get('/stats') || {}; if (state.currentPage==='dashboard') renderDashboard(); updateReportBadge() }
+function updateReportBadge() {
+  const b = document.getElementById('report-badge')
+  if (stats.pending_reports > 0) { b.textContent = stats.pending_reports; b.style.display = '' }
+  else b.style.display = 'none'
+}
+function statCard(icon, num, label, cls) {
+  return `<div class="stat-card">
+    <div class="stat-card-top"><div class="stat-icon ${cls}">${icon}</div></div>
+    <div class="stat-num">${num||0}</div><div class="stat-label">${label}</div>
+  </div>`
+}
+function renderDashboard() {
+  document.getElementById('content').innerHTML = `
+    <div class="stats-grid">
+      ${statCard('<svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>',stats.users,'Registered Users','g')}
+      ${statCard('<svg viewBox="0 0 24 24"><path d="M21.99 4c0-1.1-.89-2-1.99-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4-.01-18z"/></svg>',stats.messages,'Total Messages','b')}
+      ${statCard('<svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 10H6v-2h12v2zm0-3H6V7h12v2z"/></svg>',stats.channels,'Active Channels','o')}
+      ${statCard('<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>',stats.pending_reports,'Pending Reports','r')}
+    </div>
+    <div class="notice notice-info">
+      <strong>Quick Start:</strong> Add the widget to any page by going to <a href="#" onclick="show('widget')" style="color:#1d4ed8;font-weight:600">Widget & Embed</a> and copying the embed code.
+    </div>`
+  loadStats()
+}
+
+// ── Channels ──────────────────────────────────────────────────────────────────
+async function renderChannels() {
+  const data = await api.get('/channels')
+  const channels = data?.channels || []
+  state.channels = channels
+  const rows = channels.map(c => `
+    <tr>
+      <td><strong>${esc(c.name)}</strong><br><small style="color:#6b7280">#${esc(c.slug)}</small></td>
+      <td>${esc(c.description||'-')}</td>
+      <td>${c.is_active?'<span class="badge badge-green">Active</span>':'<span class="badge badge-gray">Inactive</span>'}</td>
+      <td>${c.is_default?'<span class="badge badge-blue">Default</span>':'-'}</td>
+      <td>${c.allow_anonymous?'Yes':'No'}</td>
+      <td class="actions-cell">
+        <button class="btn btn-outline btn-xs" onclick="editChannel(${c.id})">Edit</button>
+        <button class="btn btn-xs" style="background:#fee2e2;color:#991b1b" onclick="deleteChannel(${c.id})">Remove</button>
+      </td>
+    </tr>`).join('')
+  document.getElementById('content').innerHTML = `
+    <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
+      <button class="btn btn-primary" onclick="newChannel()">+ New Channel</button>
+    </div>
+    <div class="table-wrap">
+      <div class="table-header"><h3>Channels</h3></div>
+      <table>
+        <thead><tr><th>Name</th><th>Description</th><th>Status</th><th>Default</th><th>Anonymous</th><th>Actions</th></tr></thead>
+        <tbody>${rows||emptyRow(6,'No channels yet')}</tbody>
+      </table>
+    </div>`
+}
+
+function newChannel() { openChannelModal(null) }
+async function editChannel(id) {
+  const ch = state.channels.find(c=>c.id===id)
+  if (ch) openChannelModal(ch)
+}
+async function deleteChannel(id) {
+  if (!confirm('Deactivate this channel?')) return
+  await api.del('/channels/'+id)
+  renderChannels()
+}
+function openChannelModal(ch) {
+  const isEdit = !!ch
+  modal(`<h3>${isEdit?'Edit':'New'} Channel</h3>
+    <div class="form-row-2">
+      <div class="form-group"><label>Name</label><input id="m-name" value="${esc(ch?.name||'')}"></div>
+      <div class="form-group"><label>Slug</label><input id="m-slug" value="${esc(ch?.slug||'')}" ${isEdit?'':'oninput="autoSlug()"'}></div>
+    </div>
+    <div class="form-group"><label>Description</label><textarea id="m-desc">${esc(ch?.description||'')}</textarea></div>
+    <div class="form-group"><label>Telegram URL</label><input id="m-tg" value="${esc(ch?.telegram_url||'')}"></div>
+    <div class="form-row-2">
+      <div class="form-group"><label>Max Msg Length</label><input id="m-maxlen" type="number" value="${ch?.max_msg_length||200}"></div>
+      <div class="form-group"><label>Rate Limit (s)</label><input id="m-rate" type="number" value="${ch?.rate_limit_seconds||3}"></div>
+    </div>
+    <div class="toggle-row"><span>Active</span><label class="toggle"><input type="checkbox" id="m-active" ${ch?.is_active!==false?'checked':''}><span class="slider"></span></label></div>
+    <div class="toggle-row"><span>Default Channel</span><label class="toggle"><input type="checkbox" id="m-default" ${ch?.is_default?'checked':''}><span class="slider"></span></label></div>
+    <div class="toggle-row"><span>Allow Anonymous</span><label class="toggle"><input type="checkbox" id="m-anon" ${ch?.allow_anonymous!==false?'checked':''}><span class="slider"></span></label></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveChannel(${ch?.id||0})">Save</button>
+    </div>`)
+  if (!isEdit) document.getElementById('m-name').addEventListener('input', autoSlug)
+}
+function autoSlug() {
+  const s = document.getElementById('m-name').value.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')
+  document.getElementById('m-slug').value = s
+}
+async function saveChannel(id) {
+  const body = {
+    name: v('m-name'), slug: v('m-slug'), description: v('m-desc'),
+    telegram_url: v('m-tg'), max_msg_length: +v('m-maxlen'), rate_limit_seconds: +v('m-rate'),
+    is_active: document.getElementById('m-active').checked,
+    is_default: document.getElementById('m-default').checked,
+    allow_anonymous: document.getElementById('m-anon').checked,
+  }
+  if (id) await api.put('/channels/'+id, body)
+  else await api.post('/channels', body)
+  closeModal(); renderChannels()
+}
+
+// ── Messages ──────────────────────────────────────────────────────────────────
+let msgPage = 1, msgQ = ''
+async function renderMessages() {
+  document.getElementById('content').innerHTML = `
+    <div class="table-wrap">
+      <div class="table-header">
+        <h3>Messages</h3>
+        <div class="search-box">
+          <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+          <input id="msg-q" placeholder="Search messages…" oninput="msgQ=this.value;msgPage=1;loadMessages()">
+        </div>
+      </div>
+      <table><thead><tr><th>User</th><th>Message</th><th>Channel</th><th>Time</th><th>Action</th></tr></thead>
+      <tbody id="msg-body">Loading…</tbody></table>
+    </div>
+    <div class="pagination" id="msg-pag"></div>`
+  loadMessages()
+}
+async function loadMessages() {
+  const q = msgQ ? '&q='+encodeURIComponent(msgQ) : ''
+  const data = await api.get(`/messages?page=${msgPage}${q}`)
+  const msgs = data?.messages || []
+  const rows = msgs.map(m => `<tr>
+    <td><div class="user-cell"><div class="u-avatar" style="background:${m.avatar_color||'#6b7280'}">${(m.display_name||'?')[0].toUpperCase()}</div>
+    <div><div class="u-name">${esc(m.display_name)}</div><div class="u-email">${m.is_anonymous?'Anonymous':''}</div></div></div></td>
+    <td><div class="msg-content" title="${esc(m.content)}">${esc(m.content)}</div></td>
+    <td><span class="tag">ch:${m.channel_id}</span></td>
+    <td style="white-space:nowrap;font-size:12px;color:#6b7280">${new Date(m.created_at).toLocaleString()}</td>
+    <td><button class="btn btn-xs" style="background:#fee2e2;color:#991b1b" onclick="deleteMsg(${m.id})">Delete</button></td>
+  </tr>`).join('')
+  document.getElementById('msg-body').innerHTML = rows || emptyRow(5,'No messages found')
+}
+async function deleteMsg(id) {
+  if (!confirm('Delete this message?')) return
+  await api.del('/messages/'+id); loadMessages()
+}
+
+// ── Users ─────────────────────────────────────────────────────────────────────
+async function renderUsers() {
+  document.getElementById('content').innerHTML = `
+    <div class="table-wrap">
+      <div class="table-header"><h3>Users</h3></div>
+      <table><thead><tr><th>User</th><th>Role</th><th>Reputation</th><th>Status</th><th>Joined</th><th>Actions</th></tr></thead>
+      <tbody id="users-body">Loading…</tbody></table>
+    </div>`
+  const data = await api.get('/users')
+  const users = data?.users || []
+  const roleBadge = r => r==='admin'?'badge-red':r==='moderator'?'badge-blue':'badge-gray'
+  const rows = users.map(u => `<tr>
+    <td><div class="user-cell">
+      <div class="u-avatar" style="background:${u.avatar_color||'#6b7280'}">${(u.username||'?')[0].toUpperCase()}</div>
+      <div><div class="u-name">${esc(u.username)}</div><div class="u-email">${esc(u.email||'')}</div></div>
+    </div></td>
+    <td><span class="badge ${roleBadge(u.role)}">${u.role}</span></td>
+    <td>${u.reputation}</td>
+    <td>${u.is_banned?'<span class="badge badge-red">Banned</span>':'<span class="badge badge-green">Active</span>'}</td>
+    <td style="font-size:12px;color:#6b7280">${new Date(u.created_at).toLocaleDateString()}</td>
+    <td class="actions-cell">
+      ${u.role!=='admin'?`
+        ${u.is_banned
+          ?`<button class="btn btn-xs btn-outline" onclick="unbanUser(${u.id})">Unban</button>`
+          :`<button class="btn btn-xs" style="background:#fee2e2;color:#991b1b" onclick="banUser(${u.id})">Ban</button>`}
+        <button class="btn btn-xs btn-outline" onclick="editRep(${u.id},${u.reputation})">Rep</button>
+      `:'<span style="color:#6b7280;font-size:12px">—</span>'}
+    </td>
+  </tr>`).join('')
+  document.getElementById('users-body').innerHTML = rows || emptyRow(6,'No users yet')
+}
+async function banUser(id) { if (!confirm('Ban this user?')) return; await api.put('/users/'+id+'/ban'); renderUsers() }
+async function unbanUser(id) { await api.put('/users/'+id+'/unban'); renderUsers() }
+function editRep(id, cur) {
+  modal(`<h3>Set Reputation</h3>
+    <div class="form-group"><label>Reputation Score</label><input id="rep-val" type="number" value="${cur}"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveRep(${id})">Save</button>
+    </div>`)
+}
+async function saveRep(id) {
+  await api.put('/users/'+id+'/reputation', {value: +document.getElementById('rep-val').value})
+  closeModal(); renderUsers()
+}
+
+// ── Reports ───────────────────────────────────────────────────────────────────
+async function renderReports() {
+  document.getElementById('content').innerHTML = `
+    <div class="section-tabs">
+      <div class="tab active" onclick="switchReportTab('pending',this)">Pending</div>
+      <div class="tab" onclick="switchReportTab('resolved',this)">Resolved</div>
+      <div class="tab" onclick="switchReportTab('dismissed',this)">Dismissed</div>
+    </div>
+    <div class="table-wrap">
+      <div class="table-header"><h3>Reports</h3></div>
+      <table><thead><tr><th>ID</th><th>Message ID</th><th>Reason</th><th>Status</th><th>Reported</th><th>Actions</th></tr></thead>
+      <tbody id="reports-body">Loading…</tbody></table>
+    </div>`
+  loadReports('pending')
+}
+async function loadReports(status) {
+  const data = await api.get('/reports?status='+status)
+  const reports = data?.reports || []
+  const rows = reports.map(r => `<tr>
+    <td>#${r.id}</td>
+    <td>Msg #${r.message_id}</td>
+    <td>${esc(r.reason||'-')}</td>
+    <td><span class="badge ${r.status==='pending'?'badge-yellow':r.status==='resolved'?'badge-green':'badge-gray'}">${r.status}</span></td>
+    <td style="font-size:12px;color:#6b7280">${new Date(r.created_at).toLocaleDateString()}</td>
+    <td class="actions-cell">${r.status==='pending'?`
+      <button class="btn btn-xs btn-primary" onclick="resolveReport(${r.id},'resolved')">Resolve</button>
+      <button class="btn btn-xs btn-outline" onclick="resolveReport(${r.id},'dismissed')">Dismiss</button>
+    `:'-'}</td>
+  </tr>`).join('')
+  document.getElementById('reports-body').innerHTML = rows || emptyRow(6,'No reports in this category')
+  updateReportBadge()
+}
+function switchReportTab(status, el) {
+  document.querySelectorAll('.section-tabs .tab').forEach(t=>t.classList.remove('active'))
+  el.classList.add('active'); loadReports(status)
+}
+async function resolveReport(id, status) {
+  await api.put('/reports/'+id+'/resolve', {status})
+  renderReports()
+}
+
+// ── Widget & Embed ────────────────────────────────────────────────────────────
+function renderWidget() {
+  const origin = window.location.origin
+  const ch = state.channels.find(c=>c.is_default) || state.channels[0]
+  const slug = ch?.slug || 'general'
+  document.getElementById('content').innerHTML = `
+    <div class="notice notice-info" style="margin-bottom:20px">
+      Copy one of the snippets below and paste it into your webpage's HTML, just before <code>&lt;/body&gt;</code>.
+    </div>
+    <div class="table-wrap" style="padding:20px;margin-bottom:20px">
+      <h3 style="margin-bottom:12px;font-size:15px">Auto-init (simplest)</h3>
+      <div class="embed-box">&lt;<span class="hl">script</span>
+  src=<span class="hl">"${origin}/widget/chatsphere.js"</span>
+  data-server=<span class="hl">"${origin}"</span>
+  data-channel=<span class="hl">"${slug}"</span>
+  data-position=<span class="hl">"bottom-right"</span>
+&gt;&lt;/<span class="hl">script</span>&gt;</div>
+      <button class="btn btn-outline btn-sm" onclick="copy(this,'auto')">Copy</button>
+    </div>
+    <div class="table-wrap" style="padding:20px;margin-bottom:20px">
+      <h3 style="margin-bottom:12px;font-size:15px">Manual init (more control)</h3>
+      <div class="embed-box">&lt;<span class="hl">link</span> rel=<span class="hl">"stylesheet"</span> href=<span class="hl">"${origin}/widget/chatsphere.css"</span>&gt;
+&lt;<span class="hl">script</span> src=<span class="hl">"${origin}/widget/chatsphere.js"</span>&gt;&lt;/<span class="hl">script</span>&gt;
+&lt;<span class="hl">script</span>&gt;
+  ChatSphere.init({
+    server:   <span class="hl">'${origin}'</span>,
+    channel:  <span class="hl">'${slug}'</span>,
+    position: <span class="hl">'bottom-right'</span>,
+    title:    <span class="hl">'My Community Chat'</span>,
+  });
+&lt;/<span class="hl">script</span>&gt;</div>
+      <button class="btn btn-outline btn-sm" onclick="copy(this,'manual')">Copy</button>
+    </div>
+    <div class="table-wrap" style="padding:20px">
+      <h3 style="margin-bottom:8px;font-size:15px">Live Preview</h3>
+      <p style="font-size:13px;color:#6b7280;margin-bottom:16px">The widget is active on this admin page. Look for the green button in the bottom-right corner.</p>
+    </div>`
+  // Inject widget preview
+  if (!document.querySelector('[data-cs="root"]')) {
+    const s = document.createElement('script')
+    s.src = origin + '/widget/chatsphere.js'
+    s.setAttribute('data-server', origin)
+    s.setAttribute('data-channel', slug)
+    document.body.appendChild(s)
+  }
+}
+function copy(btn, type) {
+  const origin = window.location.origin
+  const ch = state.channels.find(c=>c.is_default)||state.channels[0]
+  const slug = ch?.slug||'general'
+  const texts = {
+    auto: `<script src="${origin}/widget/chatsphere.js" data-server="${origin}" data-channel="${slug}" data-position="bottom-right"><\/script>`,
+    manual: `<link rel="stylesheet" href="${origin}/widget/chatsphere.css">\n<script src="${origin}/widget/chatsphere.js"><\/script>\n<script>\n  ChatSphere.init({ server:'${origin}', channel:'${slug}', position:'bottom-right' });\n<\/script>`
+  }
+  navigator.clipboard.writeText(texts[type]).then(()=>{btn.textContent='Copied!';setTimeout(()=>btn.textContent='Copy',1500)})
+}
+
+// ── Modal helper ──────────────────────────────────────────────────────────────
+function modal(html) {
+  document.getElementById('modal-container').innerHTML =
+    `<div class="modal-backdrop" onclick="if(event.target===this)closeModal()"><div class="modal">${html}</div></div>`
+}
+function closeModal() { document.getElementById('modal-container').innerHTML = '' }
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') }
+function v(id)  { return (document.getElementById(id)?.value||'').trim() }
+function emptyRow(cols, msg) {
+  return `<tr><td colspan="${cols}" class="empty-state"><svg viewBox="0 0 24 24"><path d="M20 6h-2.18c.07-.44.18-.87.18-1.33C18 2.52 15.5 0 12.33 0c-1.66 0-3.17.69-4.24 1.8L6 4H2v2h4.17L8.5 3.67C9.17 2.96 10.21 2.5 11.33 2.5c2.07 0 3.17 1.5 3.17 3 0 .33-.06.65-.16.95L14.17 7H2v2h2.17L6 11.17V20c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2v-8.83L19.83 9H22V7h-2.17z"/></svg><p>${msg}</p></td></tr>`
+}
+
+setInterval(loadStats, 30000)
+</script>
+</body>
+</html>
