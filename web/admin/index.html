@@ -155,6 +155,10 @@ textarea{resize:vertical;min-height:80px}
       <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>Reports
       <span id="report-badge" style="margin-left:auto;background:#ef4444;color:white;font-size:10px;padding:1px 6px;border-radius:9px;display:none"></span>
     </a>
+    <div class="nav-section">Safety</div>
+    <a class="nav-item" onclick="show('moderation')">
+      <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-1 14l-3-3 1.41-1.41L11 12.17l4.59-4.58L17 9l-6 6z"/></svg>Moderation
+    </a>
     <div class="nav-section">People</div>
     <a class="nav-item" onclick="show('users')">
       <svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>Users
@@ -305,12 +309,12 @@ window.addEventListener('DOMContentLoaded', async () => {
 function show(page) {
   state.currentPage = page
   document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'))
-  const map = {dashboard:0,channels:1,messages:2,reports:3,users:4,widget:5}
+  const map = {dashboard:0,channels:1,messages:2,reports:3,moderation:4,users:5,widget:6}
   const items = document.querySelectorAll('.nav-item')
-  if (items[map[page]]) items[map[page]].classList.add('active')
-  const titles = {dashboard:'Dashboard',channels:'Channels',messages:'Messages',reports:'Reports',users:'Users',widget:'Widget & Embed'}
+  if (items[map[page]] !== undefined) items[map[page]].classList.add('active')
+  const titles = {dashboard:'Dashboard',channels:'Channels',messages:'Messages',reports:'Reports',moderation:'Moderation',users:'Users',widget:'Widget & Embed'}
   document.getElementById('page-title').textContent = titles[page] || page
-  const fns = {dashboard:renderDashboard,channels:renderChannels,messages:renderMessages,reports:renderReports,users:renderUsers,widget:renderWidget}
+  const fns = {dashboard:renderDashboard,channels:renderChannels,messages:renderMessages,reports:renderReports,moderation:renderModeration,users:renderUsers,widget:renderWidget}
   if (fns[page]) fns[page]()
 }
 
@@ -395,6 +399,12 @@ function openChannelModal(ch) {
       <div class="form-group"><label>Max Msg Length</label><input id="m-maxlen" type="number" value="${ch?.max_msg_length||200}"></div>
       <div class="form-group"><label>Rate Limit (s)</label><input id="m-rate" type="number" value="${ch?.rate_limit_seconds||3}"></div>
     </div>
+    <div class="form-group"><label>Accent Color <small style="color:#6b7280">(widget theme, e.g. #f5a623)</small></label>
+      <div style="display:flex;align-items:center;gap:8px">
+        <input type="color" id="m-accent-pick" value="${ch?.accent_color||'#f5a623'}" style="width:40px;height:36px;padding:2px;border-radius:6px;cursor:pointer">
+        <input id="m-accent" value="${esc(ch?.accent_color||'')}" placeholder="#f5a623" style="flex:1" oninput="syncColor(this.value)" maxlength="7">
+      </div>
+    </div>
     <div class="toggle-row"><span>Active</span><label class="toggle"><input type="checkbox" id="m-active" ${ch?.is_active!==false?'checked':''}><span class="slider"></span></label></div>
     <div class="toggle-row"><span>Default Channel</span><label class="toggle"><input type="checkbox" id="m-default" ${ch?.is_default?'checked':''}><span class="slider"></span></label></div>
     <div class="toggle-row"><span>Allow Anonymous</span><label class="toggle"><input type="checkbox" id="m-anon" ${ch?.allow_anonymous!==false?'checked':''}><span class="slider"></span></label></div>
@@ -403,6 +413,18 @@ function openChannelModal(ch) {
       <button class="btn btn-primary" onclick="saveChannel(${ch?.id||0})">Save</button>
     </div>`)
   if (!isEdit) document.getElementById('m-name').addEventListener('input', autoSlug)
+  const pick = document.getElementById('m-accent-pick')
+  if (pick) {
+    pick.addEventListener('input', () => { document.getElementById('m-accent').value = pick.value })
+    document.getElementById('m-accent').addEventListener('input', () => {
+      const val = document.getElementById('m-accent').value
+      if (/^#[0-9a-fA-F]{6}$/.test(val)) pick.value = val
+    })
+  }
+}
+function syncColor(val) {
+  const pick = document.getElementById('m-accent-pick')
+  if (pick && /^#[0-9a-fA-F]{6}$/.test(val)) pick.value = val
 }
 function autoSlug() {
   const s = document.getElementById('m-name').value.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')
@@ -416,6 +438,7 @@ async function saveChannel(id) {
     is_default: document.getElementById('m-default').checked,
     allow_anonymous: document.getElementById('m-anon').checked,
   }
+  body.accent_color = v('m-accent')
   if (id) await api.put('/channels/'+id, body)
   else await api.post('/channels', body)
   closeModal(); renderChannels()
@@ -614,6 +637,67 @@ function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;'
 function v(id)  { return (document.getElementById(id)?.value||'').trim() }
 function emptyRow(cols, msg) {
   return `<tr><td colspan="${cols}" class="empty-state"><svg viewBox="0 0 24 24"><path d="M20 6h-2.18c.07-.44.18-.87.18-1.33C18 2.52 15.5 0 12.33 0c-1.66 0-3.17.69-4.24 1.8L6 4H2v2h4.17L8.5 3.67C9.17 2.96 10.21 2.5 11.33 2.5c2.07 0 3.17 1.5 3.17 3 0 .33-.06.65-.16.95L14.17 7H2v2h2.17L6 11.17V20c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2v-8.83L19.83 9H22V7h-2.17z"/></svg><p>${msg}</p></td></tr>`
+}
+
+// ── Moderation (Blocked Words) ────────────────────────────────────────────────
+async function renderModeration() {
+  document.getElementById('content').innerHTML = `
+    <div class="notice notice-info" style="margin-bottom:16px">
+      Blocked words are checked on every message. <strong>Global rules</strong> apply to all channels; channel-specific rules apply only to that channel. The cache refreshes every 5 minutes.
+    </div>
+    <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
+      <button class="btn btn-primary" onclick="newBlockedWord()">+ Add Rule</button>
+    </div>
+    <div class="table-wrap">
+      <div class="table-header"><h3>Blocked Words</h3></div>
+      <table>
+        <thead><tr><th>Pattern</th><th>Type</th><th>Scope</th><th>Added</th><th>Action</th></tr></thead>
+        <tbody id="bw-body">Loading…</tbody>
+      </table>
+    </div>`
+  loadBlockedWords()
+}
+async function loadBlockedWords() {
+  const data = await api.get('/blocked-words')
+  const words = data?.blocked_words || []
+  const chName = id => { const c = state.channels.find(x=>x.id===id); return c?c.name:'Channel '+id }
+  const rows = words.map(w => `<tr>
+    <td><code style="font-size:12px;background:#f3f4f6;padding:2px 6px;border-radius:4px">${esc(w.pattern)}</code></td>
+    <td><span class="badge ${w.is_regex?'badge-blue':'badge-gray'}">${w.is_regex?'Regex':'Literal'}</span></td>
+    <td>${w.channel_id?`<span class="tag">${esc(chName(w.channel_id))}</span>`:'<span class="badge badge-yellow">Global</span>'}</td>
+    <td style="font-size:12px;color:#6b7280">${new Date(w.created_at).toLocaleDateString()}</td>
+    <td><button class="btn btn-xs" style="background:#fee2e2;color:#991b1b" onclick="deleteBlockedWord(${w.id})">Remove</button></td>
+  </tr>`).join('')
+  document.getElementById('bw-body').innerHTML = rows || emptyRow(5,'No blocked words configured')
+}
+function newBlockedWord() {
+  const channelOpts = `<option value="">Global (all channels)</option>` +
+    state.channels.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('')
+  modal(`<h3>Add Blocked Word</h3>
+    <div class="form-group"><label>Pattern</label><input id="bw-pattern" placeholder="e.g. spam or ^[A-Z]{5,}$"></div>
+    <div class="form-group"><label>Scope</label><select id="bw-channel">${channelOpts}</select></div>
+    <div class="toggle-row"><span>Regex pattern</span><label class="toggle"><input type="checkbox" id="bw-regex"><span class="slider"></span></label></div>
+    <p style="font-size:11px;color:#6b7280;margin-top:4px">Literal: case-insensitive substring match. Regex: full Go regexp syntax.</p>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveBlockedWord()">Add Rule</button>
+    </div>`)
+}
+async function saveBlockedWord() {
+  const pattern = v('bw-pattern')
+  if (!pattern) return
+  const chVal = document.getElementById('bw-channel').value
+  const body = {
+    pattern,
+    is_regex: document.getElementById('bw-regex').checked,
+    channel_id: chVal ? +chVal : null,
+  }
+  await api.post('/blocked-words', body)
+  closeModal(); loadBlockedWords()
+}
+async function deleteBlockedWord(id) {
+  if (!confirm('Remove this rule?')) return
+  await api.del('/blocked-words/'+id); loadBlockedWords()
 }
 
 setInterval(loadStats, 30000)

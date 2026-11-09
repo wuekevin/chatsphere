@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"io/fs"
 	"net/http"
 	"strconv"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/wuekevin/chatsphere/internal/config"
 	"github.com/wuekevin/chatsphere/internal/middleware"
 	"github.com/wuekevin/chatsphere/internal/model"
+	"github.com/wuekevin/chatsphere/web"
 )
 
 // RegisterAdmin wires admin API routes (all require admin role).
@@ -39,15 +41,21 @@ func RegisterAdmin(r *gin.Engine, db *gorm.DB, rdb *redis.Client, cfg *config.Co
 	// Reports
 	admin.GET("/reports", adminListReports(db))
 	admin.PUT("/reports/:id/resolve", adminResolveReport(db))
+
+	// Blocked words (content moderation)
+	admin.GET("/blocked-words", adminListBlockedWords(db))
+	admin.POST("/blocked-words", adminCreateBlockedWord(db))
+	admin.DELETE("/blocked-words/:id", adminDeleteBlockedWord(db))
 }
 
 // RegisterWidget serves the admin SPA and the embeddable widget files.
 func RegisterWidget(r *gin.Engine, cfg *config.Config) {
-	// Serve the admin SPA
+	// Serve the admin SPA (filesystem — convenient for development)
 	r.Static(cfg.Admin.Path, "./web/admin")
 
-	// Serve widget assets
-	r.Static("/widget", "./web/widget")
+	// Widget assets — embedded in binary so the production binary is self-contained (AD-7)
+	widgetSub, _ := fs.Sub(web.WidgetFS, "widget")
+	r.StaticFS("/widget", http.FS(widgetSub))
 
 	// Serve installer (never reached if already installed, but harmless)
 	r.Static("/setup", "./web/installer")
@@ -93,6 +101,7 @@ type channelRequest struct {
 	AllowAnonymous   bool   `json:"allow_anonymous"`
 	WelcomeMessage   string `json:"welcome_message"`
 	TelegramURL      string `json:"telegram_url"`
+	AccentColor      string `json:"accent_color"`
 }
 
 func adminCreateChannel(db *gorm.DB) gin.HandlerFunc {
@@ -114,6 +123,7 @@ func adminCreateChannel(db *gorm.DB) gin.HandlerFunc {
 			AllowAnonymous:   req.AllowAnonymous,
 			WelcomeMessage:   req.WelcomeMessage,
 			TelegramURL:      req.TelegramURL,
+			AccentColor:      req.AccentColor,
 		}
 
 		if err := db.Create(&ch).Error; err != nil {
@@ -151,6 +161,7 @@ func adminUpdateChannel(db *gorm.DB) gin.HandlerFunc {
 			AllowAnonymous:   req.AllowAnonymous,
 			WelcomeMessage:   req.WelcomeMessage,
 			TelegramURL:      req.TelegramURL,
+			AccentColor:      req.AccentColor,
 		})
 
 		c.JSON(http.StatusOK, gin.H{"channel": ch})
@@ -278,6 +289,53 @@ func adminResolveReport(db *gorm.DB) gin.HandlerFunc {
 			body.Status = "resolved"
 		}
 		db.Model(&model.Report{}).Where("id = ?", id).Update("status", body.Status)
+		c.JSON(http.StatusOK, gin.H{"ok": true})
+	}
+}
+
+// --- Blocked Words ---
+
+func adminListBlockedWords(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var words []model.BlockedWord
+		q := db.Where("is_active = true")
+		if ch := c.Query("channel_id"); ch != "" {
+			q = q.Where("channel_id = ? OR channel_id IS NULL", ch)
+		}
+		q.Order("created_at DESC").Find(&words)
+		c.JSON(http.StatusOK, gin.H{"blocked_words": words})
+	}
+}
+
+func adminCreateBlockedWord(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var body struct {
+			ChannelID *uint64 `json:"channel_id"`
+			Pattern   string  `json:"pattern" binding:"required"`
+			IsRegex   bool    `json:"is_regex"`
+		}
+		if err := c.ShouldBindJSON(&body); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		word := model.BlockedWord{
+			ChannelID: body.ChannelID,
+			Pattern:   body.Pattern,
+			IsRegex:   body.IsRegex,
+			IsActive:  true,
+		}
+		if err := db.Create(&word).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create"})
+			return
+		}
+		c.JSON(http.StatusCreated, gin.H{"blocked_word": word})
+	}
+}
+
+func adminDeleteBlockedWord(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, _ := strconv.ParseUint(c.Param("id"), 10, 64)
+		db.Model(&model.BlockedWord{}).Where("id = ?", id).Update("is_active", false)
 		c.JSON(http.StatusOK, gin.H{"ok": true})
 	}
 }

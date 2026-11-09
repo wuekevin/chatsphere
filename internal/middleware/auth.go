@@ -58,20 +58,24 @@ func AdminOnly(secretKey string) gin.HandlerFunc {
 }
 
 // OptionalAuth tries to parse a JWT but does not abort if absent.
+// It checks the Authorization header first, then falls back to ?token query param
+// (needed for WebSocket connections, which cannot set custom headers).
 func OptionalAuth(secretKey string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		header := c.GetHeader("Authorization")
-		if header == "" || !strings.HasPrefix(header, "Bearer ") {
-			c.Next()
-			return
+		var tokenStr string
+		if header := c.GetHeader("Authorization"); strings.HasPrefix(header, "Bearer ") {
+			tokenStr = strings.TrimPrefix(header, "Bearer ")
+		} else if q := c.Query("token"); q != "" {
+			tokenStr = q
 		}
-		tokenStr := strings.TrimPrefix(header, "Bearer ")
-		claims := &Claims{}
-		token, err := jwt.ParseWithClaims(tokenStr, claims, func(t *jwt.Token) (any, error) {
-			return []byte(secretKey), nil
-		})
-		if err == nil && token.Valid {
-			c.Set(claimsKey, claims)
+		if tokenStr != "" {
+			claims := &Claims{}
+			token, err := jwt.ParseWithClaims(tokenStr, claims, func(t *jwt.Token) (any, error) {
+				return []byte(secretKey), nil
+			})
+			if err == nil && token.Valid {
+				c.Set(claimsKey, claims)
+			}
 		}
 		c.Next()
 	}

@@ -1,36 +1,59 @@
 package handler
 
 import (
+	"crypto/sha256"
+	"errors"
+	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"github.com/redis/go-redis/v9"
-	"gorm.io/gorm"
 
 	"github.com/wuekevin/chatsphere/internal/config"
 	"github.com/wuekevin/chatsphere/internal/middleware"
-	"github.com/wuekevin/chatsphere/internal/model"
+	"github.com/wuekevin/chatsphere/internal/repository"
+	"github.com/wuekevin/chatsphere/internal/service"
 	"github.com/wuekevin/chatsphere/internal/ws"
 )
 
 // RegisterChat wires chat and WebSocket routes.
-func RegisterChat(r *gin.Engine, db *gorm.DB, rdb *redis.Client, hub *ws.Hub, cfg *config.Config) {
-	r.GET("/ws/:channel", middleware.OptionalAuth(cfg.Server.SecretKey), wsHandler(db, hub, cfg))
+func RegisterChat(
+	r *gin.Engine,
+	chSvc *service.ChannelService,
+	msgSvc *service.MessageService,
+	userRepo repository.UserRepository,
+	registry *ws.HubRegistry,
+	cfg *config.Config,
+) {
+	r.GET("/ws/:channel", middleware.OptionalAuth(cfg.Server.SecretKey), wsHandler(chSvc, userRepo, registry, cfg))
 
 	api := r.Group("/api")
-	api.GET("/channels", listChannelsHandler(db))
-	api.GET("/channels/:slug/messages", getMessagesHandler(db))
+	api.GET("/channels", listChannelsHandler(chSvc))
+	api.GET("/channels/:slug/messages", getMessagesHandler(chSvc, msgSvc))
 }
 
-func wsHandler(db *gorm.DB, hub *ws.Hub, cfg *config.Config) gin.HandlerFunc {
+func wsHandler(chSvc *service.ChannelService, userRepo repository.UserRepository, registry *ws.HubRegistry, cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		slug := c.Param("channel")
 
-		var channel model.Channel
-		if err := db.Where("slug = ? AND is_active = true", slug).First(&channel).Error; err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": "channel not found"})
+		channel, err := chSvc.GetBySlug(slug)
+		if err != nil {
+			if errors.Is(err, repository.ErrNotFound) {
+				c.JSON(http.StatusNotFound, gin.H{"error": "channel not found"})
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+			}
 			return
 		}
+		hub := registry.GetOrCreate(channel.Slug, channel.ID)
+
+		// anonID: stable 8-char hex derived from client IP + server salt.
+		ip := c.GetHeader("X-Real-IP")
+		if ip == "" {
+			ip = c.Request.RemoteAddr
+		}
+		sum := sha256.Sum256([]byte(ip + cfg.Server.SecretKey))
+		anonID := fmt.Sprintf("%x", sum[:4])
 
 		claims := middleware.GetClaims(c)
 
@@ -44,8 +67,8 @@ func wsHandler(db *gorm.DB, hub *ws.Hub, cfg *config.Config) gin.HandlerFunc {
 		)
 
 		if claims != nil {
-			var user model.User
-			if err := db.First(&user, claims.UserID).Error; err == nil && !user.IsBanned {
+			user, err := userRepo.GetByID(claims.UserID)
+			if err == nil && !user.IsBanned {
 				uid := user.ID
 				userID = &uid
 				displayName = user.Username
@@ -61,51 +84,63 @@ func wsHandler(db *gorm.DB, hub *ws.Hub, cfg *config.Config) gin.HandlerFunc {
 				c.JSON(http.StatusForbidden, gin.H{"error": "this channel requires a registered account"})
 				return
 			}
-			// Generate a temporary display name for anonymous users
-			displayName = anonName(c.ClientIP())
+			displayName = anonName(anonID)
 			avatarColor = randomColor(displayName)
 		}
 
-		ws.ServeWS(hub, &channel, c.Writer, c.Request,
-			userID, displayName, country, avatarColor, reputation, isAnon)
+		ws.ServeWS(hub, channel, c.Writer, c.Request,
+			userID, displayName, country, avatarColor, reputation, isAnon, anonID)
 	}
 }
 
-func listChannelsHandler(db *gorm.DB) gin.HandlerFunc {
+func listChannelsHandler(chSvc *service.ChannelService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var channels []model.Channel
-		db.Where("is_active = true").Order("is_default DESC, name ASC").Find(&channels)
+		channels, err := chSvc.ListActive()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list channels"})
+			return
+		}
 		c.JSON(http.StatusOK, gin.H{"channels": channels})
 	}
 }
 
-func getMessagesHandler(db *gorm.DB) gin.HandlerFunc {
+func getMessagesHandler(chSvc *service.ChannelService, msgSvc *service.MessageService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		slug := c.Param("slug")
 
-		var channel model.Channel
-		if err := db.Where("slug = ?", slug).First(&channel).Error; err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": "channel not found"})
+		channel, err := chSvc.GetBySlug(slug)
+		if err != nil {
+			if errors.Is(err, repository.ErrNotFound) {
+				c.JSON(http.StatusNotFound, gin.H{"error": "channel not found"})
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch channel"})
+			}
 			return
 		}
 
-		var messages []model.Message
-		db.Where("channel_id = ? AND is_deleted = false", channel.ID).
-			Order("created_at DESC").
-			Limit(100).
-			Find(&messages)
+		messages, err := msgSvc.ListByChannel(channel.ID, 100)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch messages"})
+			return
+		}
 
 		c.JSON(http.StatusOK, gin.H{"messages": messages})
 	}
 }
 
-// anonName creates a short, stable display name for anonymous users from their IP.
-func anonName(ip string) string {
-	adjectives := []string{"Quick", "Calm", "Bold", "Wise", "Bright", "Swift", "Cool", "Kind"}
-	nouns := []string{"Fox", "Bear", "Wolf", "Hawk", "Lynx", "Deer", "Crow", "Hare"}
-	var sum int
-	for _, r := range ip {
-		sum += int(r)
+// anonName returns a stable display name from an 8-hex-char anonID.
+// 20 adjectives × 20 nouns = 400 possible names.
+func anonName(anonID string) string {
+	adjectives := []string{
+		"Quick", "Calm", "Bold", "Wise", "Bright", "Swift", "Cool", "Kind",
+		"Brave", "Sharp", "Wild", "Keen", "Fair", "Free", "Pure", "Warm",
+		"Soft", "Vast", "Dark", "Stark",
 	}
-	return adjectives[sum%len(adjectives)] + nouns[(sum/8)%len(nouns)]
+	nouns := []string{
+		"Fox", "Bear", "Wolf", "Hawk", "Lynx", "Deer", "Crow", "Hare",
+		"Owl", "Pike", "Kite", "Mink", "Puma", "Ibis", "Wren", "Vole",
+		"Newt", "Moth", "Frog", "Swan",
+	}
+	n, _ := strconv.ParseUint(anonID, 16, 64)
+	return adjectives[n%uint64(len(adjectives))] + nouns[(n/uint64(len(adjectives)))%uint64(len(nouns))]
 }

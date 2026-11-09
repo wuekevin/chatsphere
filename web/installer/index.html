@@ -7,64 +7,85 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --green:#22c55e;--green-dark:#16a34a;--green-light:#dcfce7;
-  --text:#111827;--muted:#6b7280;--border:#e5e7eb;
-  --bg:#f0fdf4;--white:#fff;--red:#ef4444;--yellow:#f59e0b;
+  --bg:#0e1017;--surface:#161b27;--surface-2:#1c2333;--surface-3:#252d40;
+  --fg:#e8eaf0;--fg-muted:#8892a4;
+  --accent:#f5a623;--accent-dim:rgba(245,166,35,.15);--accent-glow:rgba(245,166,35,.35);--accent-dark:#d4891a;
+  --border:#2a3347;--red:#ef4444;--green:#22c55e;--green-dim:rgba(34,197,94,.15);
+  color-scheme:dark;
 }
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
-.card{background:var(--white);border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.08),0 1px 4px rgba(0,0,0,.04);width:100%;max-width:560px;overflow:hidden}
-.card-header{background:linear-gradient(135deg,#16a34a,#22c55e);padding:32px 36px;text-align:center}
+@media(prefers-color-scheme:light){
+  :root:not([data-theme="dark"]){
+    --bg:#f5f1e8;--surface:#fff;--surface-2:#f8f5f0;--surface-3:#ede9e0;
+    --fg:#1a1510;--fg-muted:#6b7280;
+    --accent:#d4891a;--accent-dim:rgba(212,137,26,.12);--accent-glow:rgba(212,137,26,.3);--accent-dark:#b8720e;
+    --border:#d1ccc3;
+    color-scheme:light;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0e1017;--surface:#161b27;--surface-2:#1c2333;--surface-3:#252d40;
+  --fg:#e8eaf0;--fg-muted:#8892a4;
+  --accent:#f5a623;--accent-dim:rgba(245,166,35,.15);--accent-glow:rgba(245,166,35,.35);--accent-dark:#d4891a;
+  --border:#2a3347;
+  color-scheme:dark;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--fg);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+.card{background:var(--surface);border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.24),0 1px 4px rgba(0,0,0,.16);width:100%;max-width:560px;overflow:hidden}
+.card-header{background:linear-gradient(135deg,var(--accent-dark),var(--accent));padding:32px 36px;text-align:center}
 .logo{display:inline-flex;align-items:center;gap:10px;margin-bottom:8px}
 .logo-icon{width:44px;height:44px;background:rgba(255,255,255,.2);border-radius:12px;display:flex;align-items:center;justify-content:center}
 .logo-icon svg{width:26px;height:26px;fill:white}
 .logo-name{font-size:24px;font-weight:700;color:white;letter-spacing:-.5px}
-.subtitle{color:rgba(255,255,255,.8);font-size:14px}
+.subtitle{color:rgba(255,255,255,.85);font-size:14px}
 .stepper{display:flex;align-items:center;justify-content:center;padding:24px 36px 0;gap:0}
 .step{display:flex;flex-direction:column;align-items:center;gap:6px;flex:1}
-.step-circle{width:32px;height:32px;border-radius:50%;border:2px solid var(--border);background:var(--white);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:var(--muted);transition:all .3s;position:relative;z-index:1}
-.step.active .step-circle{border-color:var(--green);background:var(--green);color:white}
+.step-circle{width:32px;height:32px;border-radius:50%;border:2px solid var(--border);background:var(--surface-3);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:var(--fg-muted);transition:all .3s;position:relative;z-index:1}
+.step.active .step-circle{border-color:var(--accent);background:var(--accent);color:white;box-shadow:0 0 12px var(--accent-glow)}
 .step.done .step-circle{border-color:var(--green);background:var(--green);color:white}
 .step-line{flex:1;height:2px;background:var(--border);margin-bottom:22px;transition:background .3s}
 .step.done+.step-line,.step-line.done{background:var(--green)}
-.step-label{font-size:11px;color:var(--muted);white-space:nowrap}
-.step.active .step-label{color:var(--green);font-weight:600}
+.step-label{font-size:11px;color:var(--fg-muted);white-space:nowrap}
+.step.active .step-label{color:var(--accent);font-weight:600}
 .card-body{padding:28px 36px}
 .panel{display:none}.panel.active{display:block}
 h2{font-size:18px;font-weight:700;margin-bottom:6px}
-.desc{color:var(--muted);font-size:14px;margin-bottom:24px}
+.desc{color:var(--fg-muted);font-size:14px;margin-bottom:24px}
 .form-group{margin-bottom:16px}
 .form-row{display:grid;grid-template-columns:1fr 100px;gap:12px}
-label{display:block;font-size:13px;font-weight:500;margin-bottom:6px;color:var(--text)}
-input{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;outline:none;transition:border-color .2s;background:var(--white)}
-input:focus{border-color:var(--green)}
-input::placeholder{color:#9ca3af}
+label{display:block;font-size:13px;font-weight:500;margin-bottom:6px;color:var(--fg)}
+input{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;outline:none;transition:border-color .2s,box-shadow .2s;background:var(--surface-2);color:var(--fg)}
+input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-dim)}
+input.error{border-color:var(--red)}
+input::placeholder{color:var(--fg-muted)}
+.error-msg{color:var(--red);font-size:12px;margin-top:4px;display:none}
+.error-msg.visible{display:block}
 .toggle-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border)}
 .toggle-row:last-child{border-bottom:none}
 .toggle-label{font-size:14px}
 .toggle{position:relative;display:inline-flex;width:40px;height:22px}
 .toggle input{opacity:0;width:0;height:0}
-.slider{position:absolute;inset:0;background:#d1d5db;border-radius:11px;cursor:pointer;transition:.3s}
-.slider::before{content:'';position:absolute;width:16px;height:16px;left:3px;top:3px;background:white;border-radius:50%;transition:.3s}
+.slider{position:absolute;inset:0;background:var(--surface-3);border-radius:11px;cursor:pointer;transition:.3s}
+.slider::before{content:'';position:absolute;width:16px;height:16px;left:3px;top:3px;background:var(--fg-muted);border-radius:50%;transition:.3s}
 .toggle input:checked+.slider{background:var(--green)}
-.toggle input:checked+.slider::before{transform:translateX(18px)}
+.toggle input:checked+.slider::before{transform:translateX(18px);background:white}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 24px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;border:none;transition:all .2s}
-.btn-primary{background:var(--green);color:white}.btn-primary:hover{background:var(--green-dark)}
-.btn-outline{background:transparent;color:var(--muted);border:1.5px solid var(--border)}.btn-outline:hover{border-color:var(--green);color:var(--green)}
+.btn-primary{background:var(--accent);color:white}.btn-primary:hover{background:var(--accent-dark)}
+.btn-outline{background:transparent;color:var(--fg-muted);border:1.5px solid var(--border)}.btn-outline:hover{border-color:var(--accent);color:var(--accent)}
 .btn-sm{padding:7px 14px;font-size:13px}
-.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn:disabled{opacity:.4;cursor:not-allowed;pointer-events:none}
 .actions{display:flex;justify-content:space-between;margin-top:24px}
 .test-row{display:flex;align-items:center;gap:10px;margin-top:-4px;margin-bottom:16px}
 .badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:500}
-.badge-success{background:#dcfce7;color:#15803d}
-.badge-error{background:#fee2e2;color:#991b1b}
-.badge-testing{background:#fef9c3;color:#854d0e}
-.log-box{background:#1e293b;border-radius:8px;padding:16px;font-family:'Courier New',monospace;font-size:12px;color:#94a3b8;min-height:120px;max-height:200px;overflow-y:auto;line-height:1.8}
-.log-line{margin:0}.log-line.ok{color:#4ade80}.log-line.err{color:#f87171}.log-line.info{color:#38bdf8}
-.progress{background:#e5e7eb;border-radius:4px;height:6px;margin:16px 0;overflow:hidden}
-.progress-bar{height:100%;background:var(--green);border-radius:4px;transition:width .4s}
-.success-icon{width:72px;height:72px;background:var(--green-light);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px}
-.link-box{background:#f8fafc;border:1.5px solid var(--border);border-radius:8px;padding:12px 16px;font-size:13px;color:var(--muted);display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
-.link-box a{color:var(--green);font-weight:600;text-decoration:none}
+.badge-success{background:var(--green-dim);color:var(--green)}
+.badge-error{background:rgba(239,68,68,.12);color:var(--red)}
+.badge-testing{background:rgba(245,166,35,.12);color:var(--accent)}
+.log-box{background:#0a0d14;border-radius:8px;padding:16px;font-family:'Courier New',monospace;font-size:12px;color:var(--fg-muted);min-height:120px;max-height:200px;overflow-y:auto;line-height:1.8}
+.log-line{margin:0}.log-line.ok{color:var(--green)}.log-line.err{color:var(--red)}.log-line.info{color:#38bdf8}
+.progress{background:var(--surface-3);border-radius:4px;height:6px;margin:16px 0;overflow:hidden}
+.progress-bar{height:100%;background:var(--accent);border-radius:4px;transition:width .4s}
+.success-icon{width:72px;height:72px;background:var(--green-dim);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px}
+.link-box{background:var(--surface-2);border:1.5px solid var(--border);border-radius:8px;padding:12px 16px;font-size:13px;color:var(--fg-muted);display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.link-box a{color:var(--accent);font-weight:600;text-decoration:none}
 .link-box a:hover{text-decoration:underline}
 </style>
 </head>
@@ -100,13 +121,31 @@ input::placeholder{color:#9ca3af}
       <h2>Database Connection</h2>
       <p class="desc">ChatSphere requires MySQL 8.0 or TiDB. Create the database and user before continuing.</p>
       <div class="form-row">
-        <div class="form-group"><label>Host</label><input id="db-host" value="127.0.0.1" placeholder="127.0.0.1"></div>
-        <div class="form-group"><label>Port</label><input id="db-port" value="3306" placeholder="3306" type="number"></div>
+        <div class="form-group">
+          <label>Host</label>
+          <input id="db-host" value="127.0.0.1" placeholder="127.0.0.1" oninput="$('btn-step2').disabled=true">
+          <div class="error-msg" id="db-host-err">Host is required</div>
+        </div>
+        <div class="form-group">
+          <label>Port</label>
+          <input id="db-port" value="3306" placeholder="3306" type="number" oninput="$('btn-step2').disabled=true">
+        </div>
       </div>
-      <div class="form-group"><label>Database Name</label><input id="db-name" value="chatsphere" placeholder="chatsphere"></div>
+      <div class="form-group">
+        <label>Database Name</label>
+        <input id="db-name" value="chatsphere" placeholder="chatsphere" oninput="$('btn-step2').disabled=true">
+        <div class="error-msg" id="db-name-err">Database name is required</div>
+      </div>
       <div class="form-row">
-        <div class="form-group"><label>Username</label><input id="db-user" placeholder="chatsphere"></div>
-        <div class="form-group"><label>Password</label><input id="db-pass" type="password" placeholder="••••••••"></div>
+        <div class="form-group">
+          <label>Username</label>
+          <input id="db-user" value="root" placeholder="root" oninput="$('btn-step2').disabled=true">
+          <div class="error-msg" id="db-user-err">Username is required</div>
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input id="db-pass" type="password" placeholder="••••••••" oninput="$('btn-step2').disabled=true">
+        </div>
       </div>
       <div class="test-row">
         <button class="btn btn-outline btn-sm" onclick="testDB()">Test Connection</button>
@@ -114,21 +153,34 @@ input::placeholder{color:#9ca3af}
       </div>
       <div class="actions">
         <span></span>
-        <button class="btn btn-primary" onclick="goStep(2)">Continue →</button>
+        <button class="btn btn-primary" id="btn-step2" onclick="goStep(2)" disabled>Continue →</button>
       </div>
     </div>
 
-    <!-- Panel 2: Redis -->
+    <!-- Panel 2: Redis / Cache -->
     <div class="panel" id="p2">
       <h2>Cache (Redis)</h2>
       <p class="desc">Redis stores real-time messages and online-user presence. Compatible with Upstash Redis.</p>
       <div class="form-row">
-        <div class="form-group"><label>Host</label><input id="r-host" value="127.0.0.1" placeholder="127.0.0.1"></div>
-        <div class="form-group"><label>Port</label><input id="r-port" value="6379" placeholder="6379" type="number"></div>
+        <div class="form-group">
+          <label>Host</label>
+          <input id="r-host" value="127.0.0.1" placeholder="127.0.0.1" oninput="$('btn-step3').disabled=true">
+          <div class="error-msg" id="r-host-err">Host is required</div>
+        </div>
+        <div class="form-group">
+          <label>Port</label>
+          <input id="r-port" value="6379" placeholder="6379" type="number" oninput="$('btn-step3').disabled=true">
+        </div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>Password</label><input id="r-pass" type="password" placeholder="Leave empty if none"></div>
-        <div class="form-group"><label>DB Index</label><input id="r-db" value="0" placeholder="0" type="number"></div>
+        <div class="form-group">
+          <label>Password</label>
+          <input id="r-pass" type="password" placeholder="Leave empty if none" oninput="$('btn-step3').disabled=true">
+        </div>
+        <div class="form-group">
+          <label>DB Index</label>
+          <input id="r-db" value="0" placeholder="0" type="number" oninput="$('btn-step3').disabled=true">
+        </div>
       </div>
       <div class="test-row">
         <button class="btn btn-outline btn-sm" onclick="testRedis()">Test Connection</button>
@@ -136,7 +188,7 @@ input::placeholder{color:#9ca3af}
       </div>
       <div class="actions">
         <button class="btn btn-outline" onclick="goStep(1)">← Back</button>
-        <button class="btn btn-primary" onclick="goStep(3)">Continue →</button>
+        <button class="btn btn-primary" id="btn-step3" onclick="goStep(3)" disabled>Continue →</button>
       </div>
     </div>
 
@@ -144,10 +196,10 @@ input::placeholder{color:#9ca3af}
     <div class="panel" id="p3">
       <h2>Admin Account</h2>
       <p class="desc">Create the super-administrator account. Keep these credentials safe.</p>
-      <div class="form-group"><label>Username</label><input id="a-user" placeholder="admin" autocomplete="off"></div>
+      <div class="form-group"><label>Username</label><input id="a-user" placeholder="admin" autocomplete="off"><div class="error-msg" id="a-user-err">Username is required</div></div>
       <div class="form-group"><label>Email (optional)</label><input id="a-email" type="email" placeholder="admin@example.com"></div>
-      <div class="form-group"><label>Password</label><input id="a-pass" type="password" placeholder="Minimum 6 characters" autocomplete="new-password"></div>
-      <div class="form-group"><label>Confirm Password</label><input id="a-pass2" type="password" placeholder="Repeat password" autocomplete="new-password"></div>
+      <div class="form-group"><label>Password</label><input id="a-pass" type="password" placeholder="Minimum 6 characters" autocomplete="new-password"><div class="error-msg" id="a-pass-err">Password must be at least 6 characters</div></div>
+      <div class="form-group"><label>Confirm Password</label><input id="a-pass2" type="password" placeholder="Repeat password" autocomplete="new-password"><div class="error-msg" id="a-pass2-err">Passwords do not match</div></div>
       <div class="actions">
         <button class="btn btn-outline" onclick="goStep(2)">← Back</button>
         <button class="btn btn-primary" onclick="goStep(4)">Continue →</button>
@@ -158,10 +210,10 @@ input::placeholder{color:#9ca3af}
     <div class="panel" id="p4">
       <h2>Site Settings</h2>
       <p class="desc">Configure your instance name and default chat channel.</p>
-      <div class="form-group"><label>Site Name</label><input id="site-name" value="ChatSphere" placeholder="My Community Chat"></div>
+      <div class="form-group"><label>Site Name</label><input id="site-name" value="ChatSphere" placeholder="My Community Chat"><div class="error-msg" id="site-name-err">Site name is required</div></div>
       <div class="form-group"><label>Notice / Welcome Message</label><input id="site-notice" value="Friendly chat. No ads, no spam, no links." placeholder="Displayed in the chat banner"></div>
-      <div class="form-group"><label>Default Channel Name</label><input id="ch-name" value="Global Chat" placeholder="General"></div>
-      <div class="form-group"><label>Channel Slug (URL-safe)</label><input id="ch-slug" value="general" placeholder="general" oninput="this.value=this.value.toLowerCase().replace(/[^a-z0-9-]/g,'')"></div>
+      <div class="form-group"><label>Default Channel Name</label><input id="ch-name" value="Global Chat" placeholder="General"><div class="error-msg" id="ch-name-err">Channel name is required</div></div>
+      <div class="form-group"><label>Channel Slug (URL-safe)</label><input id="ch-slug" value="general" placeholder="general" oninput="this.value=this.value.toLowerCase().replace(/[^a-z0-9-]/g,'')"><div class="error-msg" id="ch-slug-err">Channel slug is required</div></div>
       <div class="form-group"><label>Telegram Link (optional)</label><input id="tg-url" placeholder="https://t.me/yourcommunity"></div>
       <div class="form-group">
         <div class="toggle-row">
@@ -211,22 +263,72 @@ function badge(el, type, msg) {
   el.innerHTML = `<span class="badge ${colors[type]}">${msg}</span>`
 }
 
+function setFieldError(inputId, errId, msg) {
+  const inp = $(inputId), err = $(errId)
+  if (msg) {
+    inp && inp.classList.add('error')
+    if (err) { err.textContent = msg; err.classList.add('visible') }
+  } else {
+    inp && inp.classList.remove('error')
+    if (err) err.classList.remove('visible')
+  }
+}
+
+function clearErrors(...ids) {
+  ids.forEach(id => {
+    const inp = $(id)
+    inp && inp.classList.remove('error')
+    const err = $(id + '-err')
+    err && err.classList.remove('visible')
+  })
+}
+
 async function testDB() {
+  clearErrors('db-host', 'db-name', 'db-user')
   const el = $('db-status')
-  badge(el,'testing','Testing…')
-  const r = await fetch('/api/setup/test-db',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({host:v('db-host'),port:+v('db-port'),name:v('db-name'),user:v('db-user'),password:v('db-pass')})})
-  const d = await r.json()
-  d.ok ? badge(el,'ok','✓ Connected') : badge(el,'error','✗ '+d.error)
+  badge(el, 'testing', 'Testing…')
+  try {
+    const r = await fetch('/setup/test-db', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({host:v('db-host'), port:+v('db-port'), name:v('db-name'), user:v('db-user'), password:v('db-pass')})
+    })
+    const d = await r.json()
+    if (d.ok) {
+      badge(el, 'ok', '✓ Connected')
+      $('btn-step2').disabled = false
+    } else {
+      badge(el, 'error', '✗ ' + d.error)
+      $('btn-step2').disabled = true
+    }
+  } catch(e) {
+    badge(el, 'error', '✗ ' + e.message)
+    $('btn-step2').disabled = true
+  }
 }
 
 async function testRedis() {
+  clearErrors('r-host')
   const el = $('r-status')
-  badge(el,'testing','Testing…')
-  const r = await fetch('/api/setup/test-redis',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({host:v('r-host'),port:+v('r-port'),password:v('r-pass'),db:+v('r-db')})})
-  const d = await r.json()
-  d.ok ? badge(el,'ok','✓ Connected') : badge(el,'error','✗ '+d.error)
+  badge(el, 'testing', 'Testing…')
+  try {
+    const r = await fetch('/setup/test-redis', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({host:v('r-host'), port:+v('r-port'), password:v('r-pass'), db:+v('r-db')})
+    })
+    const d = await r.json()
+    if (d.ok) {
+      badge(el, 'ok', '✓ Connected')
+      $('btn-step3').disabled = false
+    } else {
+      badge(el, 'error', '✗ ' + d.error)
+      $('btn-step3').disabled = true
+    }
+  } catch(e) {
+    badge(el, 'error', '✗ ' + e.message)
+    $('btn-step3').disabled = true
+  }
 }
 
 function goStep(n) {
@@ -234,29 +336,48 @@ function goStep(n) {
   if (n === 3 && !validate2()) return
   if (n === 4 && !validate3()) return
 
-  for (let i=1;i<=5;i++) {
-    $('p'+i).classList.toggle('active', i===n)
-    $('s'+i).className = 'step' + (i<n?' done':'') + (i===n?' active':'')
-    if (i<5) $('l'+i).className = 'step-line' + (i<n?' done':'')
+  for (let i = 1; i <= 5; i++) {
+    $('p' + i).classList.toggle('active', i === n)
+    $('s' + i).className = 'step' + (i < n ? ' done' : '') + (i === n ? ' active' : '')
+    const circle = $('s' + i).querySelector('.step-circle')
+    circle.textContent = i < n ? '✓' : i
+    if (i < 5) $('l' + i).className = 'step-line' + (i < n ? ' done' : '')
   }
 }
 
 function validate1() {
-  if (!v('db-host')||!v('db-name')||!v('db-user')) { alert('Please fill in all database fields.'); return false }
-  return true
+  let ok = true
+  if (!v('db-host')) { setFieldError('db-host', 'db-host-err', 'Host is required'); ok = false }
+  if (!v('db-name')) { setFieldError('db-name', 'db-name-err', 'Database name is required'); ok = false }
+  if (!v('db-user')) { setFieldError('db-user', 'db-user-err', 'Username is required'); ok = false }
+  return ok
 }
+
 function validate2() {
-  if (!v('r-host')) { alert('Please fill in the Redis host.'); return false }
-  return true
-}
-function validate3() {
-  if (!v('a-user')) { alert('Enter an admin username.'); return false }
-  if (v('a-pass').length < 6) { alert('Password must be at least 6 characters.'); return false }
-  if (v('a-pass') !== v('a-pass2')) { alert('Passwords do not match.'); return false }
+  if (!v('r-host')) { setFieldError('r-host', 'r-host-err', 'Host is required'); return false }
   return true
 }
 
-function log(msg, type='') {
+function validate3() {
+  clearErrors('a-user', 'a-pass', 'a-pass2')
+  let ok = true
+  if (!v('a-user')) { setFieldError('a-user', 'a-user-err', 'Username is required'); ok = false }
+  if (!v('a-pass')) { setFieldError('a-pass', 'a-pass-err', 'Password is required'); ok = false }
+  else if (v('a-pass').length < 6) { setFieldError('a-pass', 'a-pass-err', 'Password must be at least 6 characters'); ok = false }
+  else if (v('a-pass') !== v('a-pass2')) { setFieldError('a-pass2', 'a-pass2-err', 'Passwords do not match'); ok = false }
+  return ok
+}
+
+function validate4() {
+  clearErrors('site-name', 'ch-name', 'ch-slug')
+  let ok = true
+  if (!v('site-name')) { setFieldError('site-name', 'site-name-err', 'Site name is required'); ok = false }
+  if (!v('ch-name')) { setFieldError('ch-name', 'ch-name-err', 'Channel name is required'); ok = false }
+  if (!v('ch-slug')) { setFieldError('ch-slug', 'ch-slug-err', 'Channel slug is required'); ok = false }
+  return ok
+}
+
+function log(msg, type = '') {
   const box = $('log')
   const line = document.createElement('div')
   line.className = 'log-line ' + type
@@ -265,17 +386,12 @@ function log(msg, type='') {
   box.scrollTop = box.scrollHeight
 }
 
-function setProgress(p) { $('prog').style.width = p+'%' }
+function setProgress(p) { $('prog').style.width = p + '%' }
 
 async function startInstall() {
-  if (!v('site-name') || !v('ch-name') || !v('ch-slug')) {
-    alert('Please fill in all site fields.')
-    return
-  }
+  if (!validate4()) return
   goStep(5)
-
-  log('Connecting to database…', 'info')
-  setProgress(10)
+  setProgress(5)
 
   const payload = {
     server_host: v('srv-host'), server_port: +v('srv-port'), debug: false,
@@ -290,31 +406,50 @@ async function startInstall() {
   }
 
   try {
-    setProgress(30)
-    log('Running database migrations…', 'info')
-    setProgress(50)
-    log('Creating admin account…', 'info')
-    setProgress(70)
-
     const res = await fetch('/api/setup/install', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify(payload)
     })
-    const data = await res.json()
 
-    setProgress(90)
-    if (data.ok) {
-      log('Writing config.yaml…', 'info')
-      setProgress(100)
-      log('Installation complete!', 'ok')
-      setTimeout(() => {
-        $('done-block').style.display = 'block'
-        const port = payload.server_port
-        $('admin-link').href = `http://${location.hostname}:${port}/admin`
-      }, 600)
-    } else {
-      log('Error at step "' + data.step + '": ' + data.error, 'err')
+    if (!res.ok) {
+      const t = await res.text()
+      log('Server error: ' + t, 'err')
+      return
+    }
+
+    const reader = res.body.getReader()
+    const decoder = new TextDecoder()
+    let buf = ''
+    let prog = 5
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buf += decoder.decode(value, { stream: true })
+      const parts = buf.split('\n\n')
+      buf = parts.pop()
+      for (const part of parts) {
+        const dataLine = part.split('\n').find(l => l.startsWith('data: '))
+        if (!dataLine) continue
+        try {
+          const e = JSON.parse(dataLine.slice(6))
+          if (e.type === 'log') {
+            log(e.msg, 'info')
+            prog = Math.min(90, prog + 17)
+            setProgress(prog)
+          } else if (e.type === 'error') {
+            log('Error: ' + e.msg, 'err')
+          } else if (e.type === 'done' && e.ok) {
+            setProgress(100)
+            log('Installation complete!', 'ok')
+            setTimeout(() => {
+              $('done-block').style.display = 'block'
+              $('admin-link').href = `http://${location.hostname}:${payload.server_port}/admin`
+            }, 600)
+          }
+        } catch {}
+      }
     }
   } catch(e) {
     log('Request failed: ' + e.message, 'err')

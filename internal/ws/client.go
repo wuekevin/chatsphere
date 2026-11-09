@@ -2,9 +2,9 @@ package ws
 
 import (
 	"context"
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"html"
 	"log"
 	"net/http"
 	"strings"
@@ -12,6 +12,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/gorilla/websocket"
+	"gorm.io/gorm"
 
 	"github.com/wuekevin/chatsphere/internal/model"
 )
@@ -46,7 +47,7 @@ type Client struct {
 	avatarColor string
 	reputation  int
 	isAnonymous bool
-	ipHash      string
+	anonID      string
 
 	// Rate limiting
 	lastSentAt time.Time
@@ -54,29 +55,25 @@ type Client struct {
 
 // InboundMessage is what a client sends to the server.
 type InboundMessage struct {
-	Type      string `json:"type"`
-	Content   string `json:"content,omitempty"`
-	MessageID uint64 `json:"message_id,omitempty"`
-	Reason    string `json:"reason,omitempty"`
-	Token     string `json:"token,omitempty"`
+	Type       string `json:"type"`
+	Content    string `json:"content,omitempty"`
+	MessageID  uint64 `json:"message_id,omitempty"`
+	Reason     string `json:"reason,omitempty"`
+	Token      string `json:"token,omitempty"`
+	ToUserID   uint64 `json:"to_user_id,omitempty"`
+	WithUserID uint64 `json:"with_user_id,omitempty"`
 }
 
 // ServeWS upgrades the connection and launches the client goroutines.
+// anonID is a precomputed 8-hex-char identity token (SHA-256(ip+salt)[:4]).
 func ServeWS(hub *Hub, channel *model.Channel, w http.ResponseWriter, r *http.Request,
-	userID *uint64, displayName, country, avatarColor string, reputation int, isAnon bool) {
+	userID *uint64, displayName, country, avatarColor string, reputation int, isAnon bool, anonID string) {
 
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Printf("[ws] upgrade error: %v", err)
 		return
 	}
-
-	ip := r.Header.Get("X-Real-IP")
-	if ip == "" {
-		ip = r.RemoteAddr
-	}
-	sum := sha256.Sum256([]byte(ip))
-	ipHash := fmt.Sprintf("%x", sum[:16])
 
 	client := &Client{
 		hub:         hub,
@@ -90,7 +87,7 @@ func ServeWS(hub *Hub, channel *model.Channel, w http.ResponseWriter, r *http.Re
 		avatarColor: avatarColor,
 		reputation:  reputation,
 		isAnonymous: isAnon,
-		ipHash:      ipHash,
+		anonID:      anonID,
 	}
 
 	hub.register <- client
@@ -132,6 +129,10 @@ func (c *Client) handleInbound(raw []byte) {
 		c.handleSend(msg.Content)
 	case "report":
 		c.handleReport(msg.MessageID, msg.Reason)
+	case "dm":
+		c.handleDM(msg.ToUserID, msg.Content)
+	case "dm_history":
+		c.handleDMHistory(msg.WithUserID)
 	case "ping":
 		c.sendJSON(Event{Type: "pong"})
 	}
@@ -142,14 +143,20 @@ func (c *Client) handleSend(content string) {
 	if content == "" {
 		return
 	}
-
-	// Enforce message length
+	// Enforce message length before escaping (escape expands some chars).
 	maxLen := c.channel.MaxMsgLength
 	if maxLen <= 0 {
 		maxLen = 200
 	}
 	if utf8.RuneCountInString(content) > maxLen {
 		c.sendError(fmt.Sprintf("Message exceeds %d characters.", maxLen))
+		return
+	}
+	content = html.EscapeString(content)
+
+	// Blocked-word check (before rate limiting so it doesn't consume the quota)
+	if c.hub.IsBlocked(content) {
+		c.sendError("Your message contains prohibited content.")
 		return
 	}
 
@@ -165,16 +172,29 @@ func (c *Client) handleSend(content string) {
 	}
 	c.lastSentAt = time.Now()
 
+	badge := ""
+	if !c.isAnonymous {
+		switch {
+		case c.reputation >= 500:
+			badge = "GOLD"
+		case c.reputation >= 100:
+			badge = "SILVER"
+		default:
+			badge = "BRONZE"
+		}
+	}
+
 	record := &model.Message{
 		ChannelID:   c.channel.ID,
 		UserID:      c.userID,
 		DisplayName: c.displayName,
 		Content:     content,
-		IPHash:      c.ipHash,
+		IPHash:      c.anonID,
 		Country:     c.country,
 		IsAnonymous: c.isAnonymous,
 		AvatarColor: c.avatarColor,
 		Reputation:  c.reputation,
+		Badge:       badge,
 	}
 
 	if err := c.hub.PersistMessage(context.Background(), record, c.channel.MaxMsgLength); err != nil {
@@ -182,10 +202,114 @@ func (c *Client) handleSend(content string) {
 		return
 	}
 
-	c.hub.BroadcastJSON(c.channelSlug, Event{
+	c.hub.BroadcastJSON(Event{
 		Type:    "message",
 		Message: record,
 	})
+
+	// Notify any @mentioned users who are online in this channel.
+	go c.hub.detectAndNotifyMentions(record.Content, record, c.userID)
+
+	// Increment reputation for registered users (+1 per message sent).
+	if !c.isAnonymous && c.userID != nil {
+		c.reputation++
+		c.hub.db.Model(&model.User{}).Where("id = ?", *c.userID).
+			UpdateColumn("reputation", gorm.Expr("reputation + 1"))
+	}
+}
+
+func (c *Client) handleDM(toUserID uint64, content string) {
+	if c.isAnonymous || c.userID == nil {
+		c.sendError("Private messages require a registered account.")
+		return
+	}
+	if toUserID == 0 || toUserID == *c.userID {
+		c.sendError("Invalid recipient.")
+		return
+	}
+	content = strings.TrimSpace(content)
+	if content == "" {
+		return
+	}
+	content = html.EscapeString(content)
+	if utf8.RuneCountInString(content) > 500 {
+		c.sendError("Private message exceeds 500 characters.")
+		return
+	}
+
+	// Look up recipient to get display info
+	var toUser model.User
+	if err := c.hub.db.First(&toUser, toUserID).Error; err != nil {
+		c.sendError("User not found.")
+		return
+	}
+
+	dm := &model.DirectMessage{
+		FromUserID: *c.userID,
+		ToUserID:   toUserID,
+		Content:    content,
+	}
+	if err := c.hub.db.Create(dm).Error; err != nil {
+		c.sendError("Failed to send message.")
+		return
+	}
+
+	dm.FromUsername = c.displayName
+	dm.FromAvatarColor = c.avatarColor
+	dm.ToUsername = toUser.Username
+	dm.ToAvatarColor = toUser.AvatarColor
+
+	payload, err := json.Marshal(Event{Type: "dm", DM: dm})
+	if err != nil {
+		return
+	}
+
+	// Deliver to recipient (all their active connections)
+	if c.hub.userReg != nil {
+		c.hub.userReg.Send(toUserID, payload)
+	}
+	// Echo back to sender
+	select {
+	case c.send <- payload:
+	default:
+	}
+}
+
+func (c *Client) handleDMHistory(withUserID uint64) {
+	if c.isAnonymous || c.userID == nil {
+		c.sendError("Private messages require a registered account.")
+		return
+	}
+	if withUserID == 0 {
+		return
+	}
+
+	var dms []model.DirectMessage
+	c.hub.db.Where(
+		"(from_user_id = ? AND to_user_id = ?) OR (from_user_id = ? AND to_user_id = ?)",
+		*c.userID, withUserID, withUserID, *c.userID,
+	).Order("created_at ASC").Limit(50).Find(&dms)
+
+	// Look up the other user once
+	var other model.User
+	c.hub.db.First(&other, withUserID)
+
+	for i := range dms {
+		if dms[i].FromUserID == *c.userID {
+			dms[i].FromUsername = c.displayName
+			dms[i].FromAvatarColor = c.avatarColor
+			dms[i].ToUsername = other.Username
+			dms[i].ToAvatarColor = other.AvatarColor
+		} else {
+			dms[i].FromUsername = other.Username
+			dms[i].FromAvatarColor = other.AvatarColor
+			dms[i].ToUsername = c.displayName
+			dms[i].ToAvatarColor = c.avatarColor
+		}
+	}
+
+	wid := withUserID
+	c.sendJSON(Event{Type: "dm_history", DMs: dms, WithUserID: &wid})
 }
 
 func (c *Client) handleReport(messageID uint64, reason string) {

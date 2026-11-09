@@ -1,0 +1,14 @@
+[Unit]
+Description=ChatSphere server
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/opt/chatsphere
+ExecStart=/opt/chatsphere/chatsphere
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

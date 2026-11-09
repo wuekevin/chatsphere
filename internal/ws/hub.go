@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"regexp"
+	"strings"
 	"sync"
 	"time"
 
@@ -14,38 +16,50 @@ import (
 	"github.com/wuekevin/chatsphere/internal/model"
 )
 
+type blockedPattern struct {
+	raw string
+	re  *regexp.Regexp // non-nil when IsRegex
+}
+
 const (
-	redisChannelKey = "chatsphere:channel:%s:messages"
-	redisOnlineKey  = "chatsphere:channel:%s:online"
+	redisChannelKey = "chatsphere:channel:%d:messages"
+	redisOnlineKey  = "chatsphere:channel:%d:online"
+	historyLimit    = 20
 )
 
-// Hub maintains all active WebSocket connections, organized by channel slug.
+// Hub manages WebSocket connections for a single channel.
 type Hub struct {
-	mu       sync.RWMutex
-	channels map[string]map[*Client]bool
+	mu      sync.RWMutex
+	clients map[*Client]bool
 
-	broadcast  chan *Envelope
+	channelSlug string
+	channelID   uint64
+
+	broadcast  chan []byte
 	register   chan *Client
 	unregister chan *Client
 
-	db    *gorm.DB
-	redis *redis.Client
+	db      *gorm.DB
+	redis   *redis.Client
+	userReg *UserRegistry
+
+	// Blocked-word cache (TTL-refreshed, avoids per-message DB queries).
+	blockedMu       sync.RWMutex
+	blockedPatterns []blockedPattern
+	blockedLoadedAt time.Time
 }
 
-// Envelope wraps an outbound message with its target channel.
-type Envelope struct {
-	ChannelSlug string
-	Payload     []byte
-}
-
-func NewHub(db *gorm.DB, rdb *redis.Client) *Hub {
+func newHub(slug string, channelID uint64, db *gorm.DB, rdb *redis.Client, userReg *UserRegistry) *Hub {
 	return &Hub{
-		channels:   make(map[string]map[*Client]bool),
-		broadcast:  make(chan *Envelope, 512),
-		register:   make(chan *Client, 64),
-		unregister: make(chan *Client, 64),
-		db:         db,
-		redis:      rdb,
+		clients:     make(map[*Client]bool),
+		channelSlug: slug,
+		channelID:   channelID,
+		broadcast:   make(chan []byte, 512),
+		register:    make(chan *Client, 64),
+		unregister:  make(chan *Client, 64),
+		db:          db,
+		redis:       rdb,
+		userReg:     userReg,
 	}
 }
 
@@ -55,104 +69,170 @@ func (h *Hub) Run() {
 		select {
 		case client := <-h.register:
 			h.addClient(client)
-
 		case client := <-h.unregister:
 			h.removeClient(client)
-
-		case env := <-h.broadcast:
-			h.broadcastToChannel(env)
+		case payload := <-h.broadcast:
+			h.broadcastToAll(payload)
 		}
 	}
 }
 
 func (h *Hub) addClient(c *Client) {
 	h.mu.Lock()
-	if h.channels[c.channelSlug] == nil {
-		h.channels[c.channelSlug] = make(map[*Client]bool)
-	}
-	h.channels[c.channelSlug][c] = true
+	h.clients[c] = true
 	h.mu.Unlock()
 
-	count := h.onlineCount(c.channelSlug)
-	h.BroadcastJSON(c.channelSlug, Event{
-		Type:  "online",
-		Count: &count,
-	})
+	if c.userID != nil && h.userReg != nil {
+		h.userReg.Register(*c.userID, c)
+	}
 
-	// Send chat history from Redis
-	go h.sendHistory(c)
+	go h.updateOnlineCount(c, true)
+	// Send identity (+ channel accent color) before history so the widget labels
+	// own messages correctly and applies the right theme color immediately.
+	go func() {
+		var accent string
+		if c.channel != nil {
+			accent = c.channel.AccentColor
+		}
+		evt := Event{
+			Type:        "joined",
+			Content:     c.displayName,
+			AccentColor: accent,
+			AvatarColor: c.avatarColor,
+			UserID:      c.userID,
+		}
+		if payload, err := json.Marshal(evt); err == nil {
+			select {
+			case c.send <- payload:
+			default:
+			}
+		}
+		h.sendHistory(c)
+	}()
 }
 
 func (h *Hub) removeClient(c *Client) {
 	h.mu.Lock()
-	if _, ok := h.channels[c.channelSlug][c]; ok {
-		delete(h.channels[c.channelSlug], c)
+	if _, ok := h.clients[c]; ok {
+		delete(h.clients, c)
 		close(c.send)
 	}
 	h.mu.Unlock()
 
-	count := h.onlineCount(c.channelSlug)
-	h.BroadcastJSON(c.channelSlug, Event{
-		Type:  "online",
-		Count: &count,
-	})
+	if c.userID != nil && h.userReg != nil {
+		h.userReg.Unregister(*c.userID, c)
+	}
+
+	go h.updateOnlineCount(c, false)
 }
 
-func (h *Hub) broadcastToChannel(env *Envelope) {
+func (h *Hub) broadcastToAll(payload []byte) {
 	h.mu.RLock()
-	clients := h.channels[env.ChannelSlug]
+	clients := make([]*Client, 0, len(h.clients))
+	for c := range h.clients {
+		clients = append(clients, c)
+	}
 	h.mu.RUnlock()
 
-	for c := range clients {
+	for _, c := range clients {
 		select {
-		case c.send <- env.Payload:
+		case c.send <- payload:
 		default:
-			h.unregister <- c
+			// Client too slow: remove synchronously to avoid blocking Run() on the unregister channel.
+			h.mu.Lock()
+			if _, ok := h.clients[c]; ok {
+				delete(h.clients, c)
+				close(c.send)
+			}
+			h.mu.Unlock()
+			go h.updateOnlineCount(c, false)
 		}
 	}
 }
 
-// BroadcastJSON serialises v and broadcasts it to all clients in the channel.
-func (h *Hub) BroadcastJSON(channelSlug string, v any) {
+// BroadcastJSON serialises v and broadcasts it to all clients in this channel.
+func (h *Hub) BroadcastJSON(v any) {
 	data, err := json.Marshal(v)
 	if err != nil {
 		log.Printf("[hub] marshal error: %v", err)
 		return
 	}
-	h.broadcast <- &Envelope{ChannelSlug: channelSlug, Payload: data}
+	h.broadcast <- data
 }
 
-// OnlineCount returns the number of connected clients in a channel.
-func (h *Hub) onlineCount(slug string) int {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-	return len(h.channels[slug])
+// updateOnlineCount updates the Redis online-member set and broadcasts the new count.
+// joining=true: SADD; joining=false: SREM (only when no duplicate client identity remains).
+func (h *Hub) updateOnlineCount(c *Client, joining bool) {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	key := fmt.Sprintf(redisOnlineKey, h.channelID)
+	member := clientMember(c)
+
+	if joining {
+		h.redis.SAdd(ctx, key, member)
+		h.redis.Expire(ctx, key, 24*time.Hour)
+	} else {
+		// Only remove the set member when no other connected client shares the same identity.
+		h.mu.RLock()
+		hasDuplicate := false
+		for other := range h.clients {
+			if clientMember(other) == member {
+				hasDuplicate = true
+				break
+			}
+		}
+		h.mu.RUnlock()
+		if !hasDuplicate {
+			h.redis.SRem(ctx, key, member)
+		}
+	}
+
+	count, err := h.redis.SCard(ctx, key).Result()
+	if err != nil {
+		// Redis unavailable: fall back to in-memory connection count.
+		h.mu.RLock()
+		count = int64(len(h.clients))
+		h.mu.RUnlock()
+	}
+	n := int(count)
+	h.BroadcastJSON(Event{Type: "online_count", Count: &n})
 }
 
-// PersistMessage stores msg in Redis (capped list) and MySQL.
+// clientMember returns the Redis set member string for a client.
+// Anonymous clients from the same IP share an anonID and count as one visitor.
+// Authenticated users across multiple tabs count as one user.
+func clientMember(c *Client) string {
+	if c.userID != nil {
+		return fmt.Sprintf("u%d", *c.userID)
+	}
+	return "a" + c.anonID
+}
+
+// PersistMessage stores msg in MySQL, then caches it in Redis.
+// MySQL failure returns an error (caller aborts). Redis failure is logged but non-fatal.
 func (h *Hub) PersistMessage(ctx context.Context, msg *model.Message, maxHistory int) error {
-	// Save to MySQL
 	if err := h.db.WithContext(ctx).Create(msg).Error; err != nil {
 		return fmt.Errorf("db create: %w", err)
 	}
 
-	// Cache in Redis as a capped list
-	key := fmt.Sprintf(redisChannelKey, msg.ChannelID)
+	key := fmt.Sprintf(redisChannelKey, h.channelID)
 	data, _ := json.Marshal(msg)
 	pipe := h.redis.Pipeline()
 	pipe.RPush(ctx, key, data)
 	pipe.LTrim(ctx, key, int64(-maxHistory), -1)
 	pipe.Expire(ctx, key, 24*time.Hour)
-	_, err := pipe.Exec(ctx)
-	return err
+	if _, err := pipe.Exec(ctx); err != nil {
+		log.Printf("[hub] redis cache error channel=%d: %v", h.channelID, err)
+	}
+	return nil
 }
 
-// sendHistory pushes recent messages to a newly connected client.
 func (h *Hub) sendHistory(c *Client) {
 	ctx := context.Background()
-	key := fmt.Sprintf(redisChannelKey, c.channelSlug)
+	key := fmt.Sprintf(redisChannelKey, h.channelID)
 
-	raw, err := h.redis.LRange(ctx, key, 0, -1).Result()
+	raw, err := h.redis.LRange(ctx, key, -historyLimit, -1).Result()
 	if err != nil || len(raw) == 0 {
 		return
 	}
@@ -174,11 +254,114 @@ func (h *Hub) sendHistory(c *Client) {
 
 // Event is the JSON envelope sent over WebSocket.
 type Event struct {
-	Type     string            `json:"type"`
-	Count    *int              `json:"count,omitempty"`
-	Message  *model.Message    `json:"message,omitempty"`
-	Messages []json.RawMessage `json:"messages,omitempty"`
-	Error    string            `json:"error,omitempty"`
-	ID       *uint64           `json:"id,omitempty"`
-	Content  string            `json:"content,omitempty"`
+	Type        string                 `json:"type"`
+	Count       *int                   `json:"count,omitempty"`
+	Message     *model.Message         `json:"message,omitempty"`
+	Messages    []json.RawMessage      `json:"messages,omitempty"`
+	Error       string                 `json:"error,omitempty"`
+	ID          *uint64                `json:"id,omitempty"`
+	Content     string                 `json:"content,omitempty"`
+	AccentColor string                 `json:"accent_color,omitempty"`
+	AvatarColor string                 `json:"avatar_color,omitempty"`
+	UserID      *uint64                `json:"user_id,omitempty"`
+	DM          *model.DirectMessage   `json:"dm,omitempty"`
+	DMs         []model.DirectMessage  `json:"dms,omitempty"`
+	WithUserID  *uint64                `json:"with_user_id,omitempty"`
+}
+
+// detectAndNotifyMentions looks for @username in a message and delivers a
+// "mention" event to any matching users who are currently connected to this hub.
+func (h *Hub) detectAndNotifyMentions(content string, msg *model.Message, senderID *uint64) {
+	re := regexp.MustCompile(`@(\w+)`)
+	matches := re.FindAllStringSubmatch(content, -1)
+	if len(matches) == 0 {
+		return
+	}
+
+	seen := map[string]bool{}
+	var usernames []string
+	for _, m := range matches {
+		lower := strings.ToLower(m[1])
+		if !seen[lower] {
+			seen[lower] = true
+			usernames = append(usernames, m[1])
+		}
+	}
+
+	var users []model.User
+	if err := h.db.Where("username IN ?", usernames).Find(&users).Error; err != nil || len(users) == 0 {
+		return
+	}
+
+	payload, err := json.Marshal(Event{Type: "mention", Message: msg})
+	if err != nil {
+		return
+	}
+
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	for _, u := range users {
+		if senderID != nil && *senderID == u.ID {
+			continue // don't notify the sender of their own mention
+		}
+		uid := u.ID
+		for c := range h.clients {
+			if c.userID != nil && *c.userID == uid {
+				select {
+				case c.send <- payload:
+				default:
+				}
+			}
+		}
+	}
+}
+
+// loadBlockedPatterns queries the DB and rebuilds the in-memory cache.
+func (h *Hub) loadBlockedPatterns() {
+	var words []model.BlockedWord
+	h.db.Where("is_active = true AND (channel_id IS NULL OR channel_id = ?)", h.channelID).Find(&words)
+
+	patterns := make([]blockedPattern, 0, len(words))
+	for _, w := range words {
+		p := blockedPattern{raw: w.Pattern}
+		if w.IsRegex {
+			re, err := regexp.Compile(w.Pattern)
+			if err != nil {
+				continue
+			}
+			p.re = re
+		}
+		patterns = append(patterns, p)
+	}
+
+	h.blockedMu.Lock()
+	h.blockedPatterns = patterns
+	h.blockedLoadedAt = time.Now()
+	h.blockedMu.Unlock()
+}
+
+// IsBlocked reports whether content matches any active blocked word/pattern.
+// The cache refreshes automatically after 5 minutes.
+func (h *Hub) IsBlocked(content string) bool {
+	h.blockedMu.RLock()
+	stale := time.Since(h.blockedLoadedAt) > 5*time.Minute
+	h.blockedMu.RUnlock()
+
+	if stale {
+		h.loadBlockedPatterns()
+	}
+
+	lower := strings.ToLower(content)
+	h.blockedMu.RLock()
+	defer h.blockedMu.RUnlock()
+	for _, p := range h.blockedPatterns {
+		if p.re != nil {
+			if p.re.MatchString(content) {
+				return true
+			}
+		} else if strings.Contains(lower, strings.ToLower(p.raw)) {
+			return true
+		}
+	}
+	return false
 }

@@ -4,7 +4,11 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
+	"io/fs"
 	"log"
 	"net/http"
 	"time"
@@ -17,6 +21,7 @@ import (
 	"github.com/wuekevin/chatsphere/internal/config"
 	"github.com/wuekevin/chatsphere/internal/database"
 	"github.com/wuekevin/chatsphere/internal/model"
+	"github.com/wuekevin/chatsphere/web"
 )
 
 // Run starts an HTTP server that serves the installation wizard.
@@ -28,13 +33,20 @@ func Run(cfgPath string) error {
 	r := gin.New()
 	r.Use(gin.Recovery())
 
-	r.Static("/setup", "./web/installer")
+	subFS, err := fs.Sub(web.InstallerFS, "installer")
+	if err != nil {
+		return fmt.Errorf("embed installer: %w", err)
+	}
+	r.StaticFS("/setup", http.FS(subFS))
 	r.GET("/", func(c *gin.Context) {
 		c.Redirect(http.StatusFound, "/setup")
 	})
+	r.NoRoute(func(c *gin.Context) {
+		c.Redirect(http.StatusFound, "/setup")
+	})
 
-	r.POST("/api/setup/test-db", testDBHandler())
-	r.POST("/api/setup/test-redis", testRedisHandler())
+	r.POST("/setup/test-db", testDBHandler())
+	r.POST("/setup/test-redis", testRedisHandler())
 	r.POST("/api/setup/install", installHandler(cfgPath, done))
 
 	srv := &http.Server{
@@ -48,7 +60,7 @@ func Run(cfgPath string) error {
 		}
 	}()
 
-	err := <-done
+	err = <-done
 
 	shutCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
@@ -161,111 +173,151 @@ func installHandler(cfgPath string, done chan<- error) gin.HandlerFunc {
 			return
 		}
 
-		// 1. Connect to database
-		dsn := database.BuildDSN(req.DBHost, req.DBPort, req.DBUser, req.DBPassword, req.DBName)
-		db, err := database.ConnectDSN(dsn)
-		if err != nil {
-			c.JSON(http.StatusOK, gin.H{"ok": false, "step": "database", "error": err.Error()})
-			return
-		}
+		c.Header("Content-Type", "text/event-stream")
+		c.Header("Cache-Control", "no-cache")
+		c.Header("X-Accel-Buffering", "no")
 
-		// 2. Run migrations
-		if err := runMigrations(db); err != nil {
-			c.JSON(http.StatusOK, gin.H{"ok": false, "step": "migrations", "error": err.Error()})
-			return
-		}
+		events := make(chan string, 20)
+		go func() {
+			defer close(events)
+			runInstall(req, cfgPath, done, events)
+		}()
 
-		// 3. Create admin user
-		hash, err := bcrypt.GenerateFromPassword([]byte(req.AdminPassword), bcrypt.DefaultCost)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"ok": false, "error": "password hash failed"})
-			return
-		}
-
-		admin := &model.User{
-			Username:     req.AdminUsername,
-			PasswordHash: string(hash),
-			Email:        req.AdminEmail,
-			AvatarColor:  "#22c55e",
-			Role:         model.RoleAdmin,
-		}
-
-		// If an admin already exists (re-install), skip creation
-		var existing model.User
-		if db.Where("role = ?", model.RoleAdmin).First(&existing).Error == gorm.ErrRecordNotFound {
-			if err := db.Create(admin).Error; err != nil {
-				c.JSON(http.StatusOK, gin.H{"ok": false, "step": "admin_user", "error": err.Error()})
-				return
+		c.Stream(func(w io.Writer) bool {
+			event, ok := <-events
+			if !ok {
+				return false
 			}
-		}
+			fmt.Fprintf(w, "data: %s\n\n", event)
+			return true
+		})
+	}
+}
 
-		// 4. Create default channel
-		ch := &model.Channel{
-			Name:             req.ChannelName,
-			Slug:             req.ChannelSlug,
-			IsDefault:        true,
-			IsActive:         true,
-			MaxMsgLength:     200,
-			RateLimitSeconds: 3,
-			AllowAnonymous:   req.AllowAnonymous,
-			TelegramURL:      req.TelegramURL,
-		}
+func runInstall(req installRequest, cfgPath string, done chan<- error, events chan<- string) {
+	fail := func(msg string, err error) {
+		b, _ := json.Marshal(map[string]string{"type": "error", "msg": msg})
+		events <- string(b)
+		done <- err
+	}
+	emit := func(typ, msg string) {
+		b, _ := json.Marshal(map[string]string{"type": typ, "msg": msg})
+		events <- string(b)
+	}
 
-		var existingCh model.Channel
-		if db.Where("slug = ?", req.ChannelSlug).First(&existingCh).Error == gorm.ErrRecordNotFound {
-			db.Create(ch)
+	// 1. Connect to database
+	emit("log", "Connecting to database…")
+	dsn := database.BuildDSN(req.DBHost, req.DBPort, req.DBUser, req.DBPassword, req.DBName)
+	db, err := database.ConnectDSN(dsn)
+	if err != nil {
+		fail(err.Error(), err)
+		return
+	}
+	defer func() {
+		if sqlDB, err := db.DB(); err == nil {
+			sqlDB.Close()
 		}
+	}()
+	emit("log", "Database connected ✓")
 
-		// 5. Build and save config
-		secretKey := generateSecret()
-		cfg := &config.Config{
-			Server: config.ServerConfig{
-				Host:           req.ServerHost,
-				Port:           req.ServerPort,
-				Debug:          req.Debug,
-				SecretKey:      secretKey,
-				AllowedOrigins: []string{"*"},
-			},
-			Database: config.DatabaseConfig{
-				Host:            req.DBHost,
-				Port:            req.DBPort,
-				Name:            req.DBName,
-				User:            req.DBUser,
-				Password:        req.DBPassword,
-				MaxOpenConns:    100,
-				MaxIdleConns:    10,
-				ConnMaxLifetime: 3600,
-			},
-			Cache: config.CacheConfig{
-				Host:     req.RedisHost,
-				Port:     req.RedisPort,
-				Password: req.RedisPassword,
-				DB:       req.RedisDB,
-			},
-			Chat: config.ChatConfig{
-				SiteName:         req.SiteName,
-				Notice:           req.Notice,
-				MaxMessageLength: 200,
-				MaxHistory:       500,
-				RateLimit:        3,
-				AllowAnonymous:   req.AllowAnonymous,
-			},
-			Admin: config.AdminConfig{
-				Path: "/admin",
-			},
-		}
+	// 2. Run migrations
+	emit("log", "Running migrations…")
+	if err := runMigrations(db); err != nil {
+		fail("Migration failed: "+err.Error(), err)
+		return
+	}
+	emit("log", "Migrations complete ✓")
 
-		if err := config.Save(cfgPath, cfg); err != nil {
-			c.JSON(http.StatusOK, gin.H{"ok": false, "step": "config", "error": err.Error()})
+	// 3. Create admin user
+	emit("log", "Creating admin account…")
+	hash, err := bcrypt.GenerateFromPassword([]byte(req.AdminPassword), bcrypt.DefaultCost)
+	if err != nil {
+		fail("Password hash failed", err)
+		return
+	}
+	admin := &model.User{
+		Username:     req.AdminUsername,
+		PasswordHash: string(hash),
+		Email:        req.AdminEmail,
+		AvatarColor:  "#f5a623",
+		Role:         model.RoleAdmin,
+	}
+	var existing model.User
+	if errors.Is(db.Where("role = ?", model.RoleAdmin).First(&existing).Error, gorm.ErrRecordNotFound) {
+		if err := db.Create(admin).Error; err != nil {
+			fail("Failed to create admin: "+err.Error(), err)
 			return
 		}
-
-		log.Println("[installer] Installation complete — config.yaml written")
-		c.JSON(http.StatusOK, gin.H{"ok": true})
-
-		// Signal the main goroutine that installation is finished
-		go func() { done <- nil }()
 	}
+
+	// 4. Create default channel
+	emit("log", "Creating default channel…")
+	defaultCh := &model.Channel{
+		Name:             req.ChannelName,
+		Slug:             req.ChannelSlug,
+		IsDefault:        true,
+		IsActive:         true,
+		MaxMsgLength:     200,
+		RateLimitSeconds: 3,
+		AllowAnonymous:   req.AllowAnonymous,
+		TelegramURL:      req.TelegramURL,
+	}
+	var existingCh model.Channel
+	if errors.Is(db.Where("slug = ?", req.ChannelSlug).First(&existingCh).Error, gorm.ErrRecordNotFound) {
+		if err := db.Create(defaultCh).Error; err != nil {
+			fail("Failed to create channel: "+err.Error(), err)
+			return
+		}
+	}
+
+	// 5. Write config
+	emit("log", "Writing config.yaml…")
+	secretKey := generateSecret()
+	cfg := &config.Config{
+		Server: config.ServerConfig{
+			Host:           req.ServerHost,
+			Port:           req.ServerPort,
+			Debug:          req.Debug,
+			SecretKey:      secretKey,
+			AllowedOrigins: []string{"*"},
+		},
+		Database: config.DatabaseConfig{
+			Host:            req.DBHost,
+			Port:            req.DBPort,
+			Name:            req.DBName,
+			User:            req.DBUser,
+			Password:        req.DBPassword,
+			MaxOpenConns:    100,
+			MaxIdleConns:    10,
+			ConnMaxLifetime: 3600,
+		},
+		Cache: config.CacheConfig{
+			Host:     req.RedisHost,
+			Port:     req.RedisPort,
+			Password: req.RedisPassword,
+			DB:       req.RedisDB,
+		},
+		Chat: config.ChatConfig{
+			SiteName:         req.SiteName,
+			Notice:           req.Notice,
+			MaxMessageLength: 200,
+			MaxHistory:       500,
+			RateLimit:        3,
+			AllowAnonymous:   req.AllowAnonymous,
+		},
+		Admin: config.AdminConfig{
+			Path: "/admin",
+		},
+	}
+	if err := config.Save(cfgPath, cfg); err != nil {
+		fail("Failed to write config: "+err.Error(), err)
+		return
+	}
+
+	log.Println("[installer] Installation complete — config.yaml written")
+	b, _ := json.Marshal(map[string]interface{}{"type": "done", "ok": true})
+	events <- string(b)
+	done <- nil
 }
 
 func runMigrations(db *gorm.DB) error {
@@ -274,6 +326,8 @@ func runMigrations(db *gorm.DB) error {
 		&model.Channel{},
 		&model.Message{},
 		&model.Report{},
+		&model.DirectMessage{},
+		&model.ReputationTier{},
 	)
 }
 

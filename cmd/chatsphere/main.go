@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -18,6 +19,8 @@ import (
 	"github.com/wuekevin/chatsphere/internal/database"
 	"github.com/wuekevin/chatsphere/internal/handler"
 	"github.com/wuekevin/chatsphere/internal/installer"
+	"github.com/wuekevin/chatsphere/internal/repository"
+	"github.com/wuekevin/chatsphere/internal/service"
 	"github.com/wuekevin/chatsphere/internal/ws"
 )
 
@@ -38,6 +41,8 @@ func main() {
 
 		log.Println("[chatsphere] Setup complete — starting server...")
 		fmt.Println()
+	} else {
+		slog.Info("starting in normal mode")
 	}
 
 	cfg, err := config.Load(configPath)
@@ -62,9 +67,11 @@ func main() {
 	}
 	log.Println("[chatsphere] Redis connected")
 
-	// Start WebSocket hub
-	hub := ws.NewHub(db, rdb)
-	go hub.Run()
+	// UserRegistry — tracks authenticated users across all hubs for DM delivery
+	userReg := ws.NewUserRegistry()
+
+	// Hub registry — creates per-channel Hub goroutines on demand
+	registry := ws.NewHubRegistry(db, rdb, userReg)
 
 	// Build router
 	r := gin.New()
@@ -82,8 +89,14 @@ func main() {
 		MaxAge:           12 * time.Hour,
 	}))
 
+	chRepo := repository.NewChannelRepository(db)
+	msgRepo := repository.NewMessageRepository(db)
+	userRepo := repository.NewUserRepository(db)
+	chSvc := service.NewChannelService(chRepo)
+	msgSvc := service.NewMessageService(msgRepo)
+
 	handler.RegisterAuth(r, db, cfg)
-	handler.RegisterChat(r, db, rdb, hub, cfg)
+	handler.RegisterChat(r, chSvc, msgSvc, userRepo, registry, cfg)
 	handler.RegisterAdmin(r, db, rdb, cfg)
 	handler.RegisterWidget(r, cfg)
 

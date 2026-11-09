@@ -1,0 +1,7 @@
+config.yaml
+.env
+*.local
+_bmad-output/
+_bmad/
+.git/
+deploy/*.md

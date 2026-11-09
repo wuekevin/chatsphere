@@ -1,0 +1,85 @@
+package ws
+
+import (
+	"sync"
+
+	"github.com/redis/go-redis/v9"
+	"gorm.io/gorm"
+)
+
+// UserRegistry maps authenticated user IDs to their active Client connections
+// across all channels, enabling cross-channel DM delivery.
+type UserRegistry struct {
+	mu      sync.RWMutex
+	clients map[uint64][]*Client
+}
+
+func NewUserRegistry() *UserRegistry {
+	return &UserRegistry{clients: make(map[uint64][]*Client)}
+}
+
+func (ur *UserRegistry) Register(userID uint64, c *Client) {
+	ur.mu.Lock()
+	ur.clients[userID] = append(ur.clients[userID], c)
+	ur.mu.Unlock()
+}
+
+func (ur *UserRegistry) Unregister(userID uint64, c *Client) {
+	ur.mu.Lock()
+	defer ur.mu.Unlock()
+	list := ur.clients[userID]
+	for i, cc := range list {
+		if cc == c {
+			ur.clients[userID] = append(list[:i], list[i+1:]...)
+			break
+		}
+	}
+	if len(ur.clients[userID]) == 0 {
+		delete(ur.clients, userID)
+	}
+}
+
+// Send delivers payload to all connections of userID. Returns true if at least
+// one connection was reachable.
+func (ur *UserRegistry) Send(userID uint64, payload []byte) bool {
+	ur.mu.RLock()
+	list := ur.clients[userID]
+	// copy slice to avoid holding lock during send
+	targets := make([]*Client, len(list))
+	copy(targets, list)
+	ur.mu.RUnlock()
+
+	for _, c := range targets {
+		select {
+		case c.send <- payload:
+		default:
+		}
+	}
+	return len(targets) > 0
+}
+
+// HubRegistry manages per-channel Hub goroutines with lazy creation.
+type HubRegistry struct {
+	hubs    sync.Map // slug → *Hub
+	db      *gorm.DB
+	rdb     *redis.Client
+	userReg *UserRegistry
+}
+
+func NewHubRegistry(db *gorm.DB, rdb *redis.Client, userReg *UserRegistry) *HubRegistry {
+	return &HubRegistry{db: db, rdb: rdb, userReg: userReg}
+}
+
+// GetOrCreate returns the Hub for the given channel, creating and starting one if needed.
+// Safe for concurrent use.
+func (r *HubRegistry) GetOrCreate(slug string, channelID uint64) *Hub {
+	if v, ok := r.hubs.Load(slug); ok {
+		return v.(*Hub)
+	}
+	hub := newHub(slug, channelID, r.db, r.rdb, r.userReg)
+	if actual, loaded := r.hubs.LoadOrStore(slug, hub); loaded {
+		return actual.(*Hub)
+	}
+	go hub.Run()
+	return hub
+}

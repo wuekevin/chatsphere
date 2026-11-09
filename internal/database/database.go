@@ -62,5 +62,7 @@ func migrate(db *gorm.DB) error {
 		&model.Channel{},
 		&model.Message{},
 		&model.Report{},
+		&model.BlockedWord{},
+		&model.DirectMessage{},
 	)
 }

@@ -20,6 +20,9 @@ func RegisterAuth(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	g.POST("/register", registerHandler(db, cfg))
 	g.POST("/login", loginHandler(db, cfg))
 	g.GET("/me", middleware.Auth(cfg.Server.SecretKey), meHandler(db))
+	g.PUT("/me", middleware.Auth(cfg.Server.SecretKey), updateMeHandler(db))
+
+	r.GET("/api/users/:id", userProfileHandler(db))
 }
 
 type registerRequest struct {
@@ -42,11 +45,21 @@ func registerHandler(db *gorm.DB, cfg *config.Config) gin.HandlerFunc {
 			return
 		}
 
+		// Best-effort country detection from CDN headers.
+		country := c.GetHeader("CF-IPCountry")
+		if country == "" {
+			country = c.GetHeader("X-Country")
+		}
+		if len(country) != 2 {
+			country = ""
+		}
+
 		user := &model.User{
 			Username:     req.Username,
 			PasswordHash: string(hash),
 			Email:        req.Email,
 			AvatarColor:  randomColor(req.Username),
+			Country:      country,
 			Role:         model.RoleMember,
 		}
 
@@ -120,6 +133,65 @@ func meHandler(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
+		c.JSON(http.StatusOK, gin.H{"user": user.PublicProfile()})
+	}
+}
+
+func updateMeHandler(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		claims := middleware.GetClaims(c)
+		if claims == nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			return
+		}
+
+		var body struct {
+			Email    string `json:"email"`
+			Password string `json:"password"`
+		}
+		if err := c.ShouldBindJSON(&body); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		updates := map[string]any{}
+		if body.Email != "" {
+			updates["email"] = body.Email
+		}
+		if body.Password != "" {
+			if len(body.Password) < 6 {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "password must be at least 6 characters"})
+				return
+			}
+			hash, err := bcrypt.GenerateFromPassword([]byte(body.Password), bcrypt.DefaultCost)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+				return
+			}
+			updates["password_hash"] = string(hash)
+		}
+
+		if len(updates) == 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "nothing to update"})
+			return
+		}
+
+		db.Model(&model.User{}).Where("id = ?", claims.UserID).Updates(updates)
+
+		var user model.User
+		db.First(&user, claims.UserID)
+		c.JSON(http.StatusOK, gin.H{"user": user.PublicProfile()})
+	}
+}
+
+func userProfileHandler(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id := c.Param("id")
+		var user model.User
+		if err := db.First(&user, id).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+			return
+		}
 		c.JSON(http.StatusOK, gin.H{"user": user.PublicProfile()})
 	}
 }

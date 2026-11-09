@@ -14,6 +14,7 @@ type Message struct {
 	IsDeleted   bool      `gorm:"default:false" json:"-"`
 	AvatarColor string    `gorm:"size:7" json:"avatar_color"`
 	Reputation  int       `gorm:"default:0" json:"reputation"`
+	Badge       string    `gorm:"size:10" json:"badge,omitempty"`
 	CreatedAt   time.Time `json:"created_at"`
 
 	Channel Channel `gorm:"foreignKey:ChannelID" json:"-"`

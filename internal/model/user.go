@@ -31,6 +31,19 @@ func (User) TableName() string {
 	return "users"
 }
 
+// Badge returns the display badge for the reputation tier.
+// ANON is not a user-level concept here; callers that know IsAnonymous should skip the badge.
+func (u *User) Badge() string {
+	switch {
+	case u.Reputation >= 500:
+		return "GOLD"
+	case u.Reputation >= 100:
+		return "SILVER"
+	default:
+		return "BRONZE"
+	}
+}
+
 // PublicProfile is the subset of User safe to send to other clients.
 type PublicProfile struct {
 	ID          uint64 `json:"id"`
@@ -38,6 +51,7 @@ type PublicProfile struct {
 	AvatarColor string `json:"avatar_color"`
 	Country     string `json:"country,omitempty"`
 	Reputation  int    `json:"reputation"`
+	Badge       string `json:"badge"`
 	Role        Role   `json:"role"`
 }
 
@@ -48,6 +62,7 @@ func (u *User) PublicProfile() PublicProfile {
 		AvatarColor: u.AvatarColor,
 		Country:     u.Country,
 		Reputation:  u.Reputation,
+		Badge:       u.Badge(),
 		Role:        u.Role,
 	}
 }

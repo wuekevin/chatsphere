@@ -14,6 +14,7 @@ type Channel struct {
 	AllowAnonymous   bool      `gorm:"default:true" json:"allow_anonymous"`
 	WelcomeMessage   string    `gorm:"type:text" json:"welcome_message,omitempty"`
 	TelegramURL      string    `gorm:"size:255" json:"telegram_url,omitempty"`
+	AccentColor      string    `gorm:"size:7" json:"accent_color,omitempty"`
 	CreatedAt        time.Time `json:"created_at"`
 	UpdatedAt        time.Time `json:"updated_at"`
 }
