@@ -2,12 +2,14 @@ module github.com/wuekevin/chatsphere
 
 go 1.26.10
 
+toolchain go1.27.3
+
 require (
-	github.com/gin-contrib/cors v1.5.0
+	github.com/gin-contrib/cors v1.7.3
 	github.com/gin-gonic/gin v1.12.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/gorilla/websocket v1.5.3
-	github.com/redis/go-redis/v9 v9.3.1
+	github.com/redis/go-redis/v9 v9.6.3
 	golang.org/x/crypto v0.58.0
 	gopkg.in/yaml.v3 v3.0.1
 	gorm.io/driver/mysql v1.5.4
