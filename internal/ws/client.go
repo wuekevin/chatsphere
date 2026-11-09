@@ -152,13 +152,14 @@ func (c *Client) handleSend(content string) {
 		c.sendError(fmt.Sprintf("Message exceeds %d characters.", maxLen))
 		return
 	}
-	content = html.EscapeString(content)
-
-	// Blocked-word check (before rate limiting so it doesn't consume the quota)
+	// Blocked-word check must run on raw content before HTML escaping,
+	// otherwise inserting < > & inside a blocked word bypasses the filter.
 	if c.hub.IsBlocked(content) {
 		c.sendError("Your message contains prohibited content.")
 		return
 	}
+
+	content = html.EscapeString(content)
 
 	// Rate limiting
 	rateLimit := c.channel.RateLimitSeconds
@@ -197,7 +198,7 @@ func (c *Client) handleSend(content string) {
 		Badge:       badge,
 	}
 
-	if err := c.hub.PersistMessage(context.Background(), record, c.channel.MaxMsgLength); err != nil {
+	if err := c.hub.PersistMessage(context.Background(), record, redisHistoryCap); err != nil {
 		log.Printf("[ws] persist error: %v", err)
 		return
 	}

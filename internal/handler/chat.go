@@ -48,10 +48,7 @@ func wsHandler(chSvc *service.ChannelService, userRepo repository.UserRepository
 		hub := registry.GetOrCreate(channel.Slug, channel.ID)
 
 		// anonID: stable 8-char hex derived from client IP + server salt.
-		ip := c.GetHeader("X-Real-IP")
-		if ip == "" {
-			ip = c.Request.RemoteAddr
-		}
+		ip := c.ClientIP()
 		sum := sha256.Sum256([]byte(ip + cfg.Server.SecretKey))
 		anonID := fmt.Sprintf("%x", sum[:4])
 
@@ -68,7 +65,11 @@ func wsHandler(chSvc *service.ChannelService, userRepo repository.UserRepository
 
 		if claims != nil {
 			user, err := userRepo.GetByID(claims.UserID)
-			if err == nil && !user.IsBanned {
+			if err == nil {
+				if user.IsBanned {
+					c.JSON(http.StatusForbidden, gin.H{"error": "your account has been banned"})
+					return
+				}
 				uid := user.ID
 				userID = &uid
 				displayName = user.Username

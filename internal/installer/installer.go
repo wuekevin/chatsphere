@@ -243,7 +243,12 @@ func runInstall(req installRequest, cfgPath string, done chan<- error, events ch
 		Role:         model.RoleAdmin,
 	}
 	var existing model.User
-	if errors.Is(db.Where("role = ?", model.RoleAdmin).First(&existing).Error, gorm.ErrRecordNotFound) {
+	existingErr := db.Where("role = ?", model.RoleAdmin).First(&existing).Error
+	if existingErr != nil && !errors.Is(existingErr, gorm.ErrRecordNotFound) {
+		fail("Failed to check existing admin: "+existingErr.Error(), existingErr)
+		return
+	}
+	if errors.Is(existingErr, gorm.ErrRecordNotFound) {
 		if err := db.Create(admin).Error; err != nil {
 			fail("Failed to create admin: "+err.Error(), err)
 			return
@@ -263,7 +268,12 @@ func runInstall(req installRequest, cfgPath string, done chan<- error, events ch
 		TelegramURL:      req.TelegramURL,
 	}
 	var existingCh model.Channel
-	if errors.Is(db.Where("slug = ?", req.ChannelSlug).First(&existingCh).Error, gorm.ErrRecordNotFound) {
+	existingChErr := db.Where("slug = ?", req.ChannelSlug).First(&existingCh).Error
+	if existingChErr != nil && !errors.Is(existingChErr, gorm.ErrRecordNotFound) {
+		fail("Failed to check existing channel: "+existingChErr.Error(), existingChErr)
+		return
+	}
+	if errors.Is(existingChErr, gorm.ErrRecordNotFound) {
 		if err := db.Create(defaultCh).Error; err != nil {
 			fail("Failed to create channel: "+err.Error(), err)
 			return
@@ -333,6 +343,8 @@ func runMigrations(db *gorm.DB) error {
 
 func generateSecret() string {
 	b := make([]byte, 32)
-	rand.Read(b)
+	if _, err := rand.Read(b); err != nil {
+		panic("crypto/rand unavailable: " + err.Error())
+	}
 	return hex.EncodeToString(b)
 }

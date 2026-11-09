@@ -24,7 +24,8 @@ type blockedPattern struct {
 const (
 	redisChannelKey = "chatsphere:channel:%d:messages"
 	redisOnlineKey  = "chatsphere:channel:%d:online"
-	historyLimit    = 20
+	historyLimit    = 20  // messages sent to a client on join
+	redisHistoryCap = 500 // max messages retained in Redis per channel
 )
 
 // Hub manages WebSocket connections for a single channel.
@@ -196,7 +197,13 @@ func (h *Hub) updateOnlineCount(c *Client, joining bool) {
 		h.mu.RUnlock()
 	}
 	n := int(count)
-	h.BroadcastJSON(Event{Type: "online_count", Count: &n})
+	select {
+	case h.broadcast <- func() []byte {
+		data, _ := json.Marshal(Event{Type: "online_count", Count: &n})
+		return data
+	}():
+	default:
+	}
 }
 
 // clientMember returns the Redis set member string for a client.
@@ -269,18 +276,23 @@ type Event struct {
 	WithUserID  *uint64                `json:"with_user_id,omitempty"`
 }
 
+var mentionRe = regexp.MustCompile(`@(\w+)`)
+
 // detectAndNotifyMentions looks for @username in a message and delivers a
 // "mention" event to any matching users who are currently connected to this hub.
 func (h *Hub) detectAndNotifyMentions(content string, msg *model.Message, senderID *uint64) {
-	re := regexp.MustCompile(`@(\w+)`)
-	matches := re.FindAllStringSubmatch(content, -1)
+	matches := mentionRe.FindAllStringSubmatch(content, -1)
 	if len(matches) == 0 {
 		return
 	}
 
+	const maxMentions = 10
 	seen := map[string]bool{}
 	var usernames []string
 	for _, m := range matches {
+		if len(usernames) >= maxMentions {
+			break
+		}
 		lower := strings.ToLower(m[1])
 		if !seen[lower] {
 			seen[lower] = true
@@ -288,8 +300,11 @@ func (h *Hub) detectAndNotifyMentions(content string, msg *model.Message, sender
 		}
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
 	var users []model.User
-	if err := h.db.Where("username IN ?", usernames).Find(&users).Error; err != nil || len(users) == 0 {
+	if err := h.db.WithContext(ctx).Where("username IN ?", usernames).Find(&users).Error; err != nil || len(users) == 0 {
 		return
 	}
 

@@ -150,7 +150,7 @@ func adminUpdateChannel(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
-		db.Model(&ch).Updates(model.Channel{
+		if err := db.Model(&ch).Updates(model.Channel{
 			Name:             req.Name,
 			Slug:             req.Slug,
 			Description:      req.Description,
@@ -162,7 +162,11 @@ func adminUpdateChannel(db *gorm.DB) gin.HandlerFunc {
 			WelcomeMessage:   req.WelcomeMessage,
 			TelegramURL:      req.TelegramURL,
 			AccentColor:      req.AccentColor,
-		})
+		}).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "update failed"})
+			return
+		}
+		db.First(&ch, id)
 
 		c.JSON(http.StatusOK, gin.H{"channel": ch})
 	}
