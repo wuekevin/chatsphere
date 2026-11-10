@@ -147,6 +147,12 @@ input::placeholder{color:var(--fg-muted)}
           <input id="db-pass" type="password" placeholder="••••••••" oninput="$('btn-step2').disabled=true">
         </div>
       </div>
+      <div class="form-group">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" id="db-tls" style="width:16px;height:16px">
+          Enable TLS/SSL <span style="color:var(--muted);font-size:0.85em">(required for TiDB Cloud and other managed databases)</span>
+        </label>
+      </div>
       <div class="test-row">
         <button class="btn btn-outline btn-sm" onclick="testDB()">Test Connection</button>
         <span id="db-status"></span>
@@ -181,6 +187,12 @@ input::placeholder{color:var(--fg-muted)}
           <label>DB Index</label>
           <input id="r-db" value="0" placeholder="0" type="number" oninput="$('btn-step3').disabled=true">
         </div>
+      </div>
+      <div class="form-group">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" id="r-tls" style="width:16px;height:16px">
+          Enable TLS/SSL <span style="color:var(--muted);font-size:0.85em">(required for Upstash Redis and other managed Redis services)</span>
+        </label>
       </div>
       <div class="test-row">
         <button class="btn btn-outline btn-sm" onclick="testRedis()">Test Connection</button>
@@ -291,7 +303,7 @@ async function testDB() {
     const r = await fetch('/setup/test-db', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({host:v('db-host'), port:+v('db-port'), name:v('db-name'), user:v('db-user'), password:v('db-pass')})
+      body: JSON.stringify({host:v('db-host'), port:+v('db-port'), name:v('db-name'), user:v('db-user'), password:v('db-pass'), tls:$('db-tls').checked})
     })
     const d = await r.json()
     if (d.ok) {
@@ -315,7 +327,7 @@ async function testRedis() {
     const r = await fetch('/setup/test-redis', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({host:v('r-host'), port:+v('r-port'), password:v('r-pass'), db:+v('r-db')})
+      body: JSON.stringify({host:v('r-host'), port:+v('r-port'), password:v('r-pass'), db:+v('r-db'), tls:$('r-tls').checked})
     })
     const d = await r.json()
     if (d.ok) {
@@ -396,9 +408,9 @@ async function startInstall() {
   const payload = {
     server_host: v('srv-host'), server_port: +v('srv-port'), debug: false,
     db_host: v('db-host'), db_port: +v('db-port'), db_name: v('db-name'),
-    db_user: v('db-user'), db_password: v('db-pass'),
+    db_user: v('db-user'), db_password: v('db-pass'), db_tls: $('db-tls').checked,
     redis_host: v('r-host'), redis_port: +v('r-port'),
-    redis_password: v('r-pass'), redis_db: +v('r-db'),
+    redis_password: v('r-pass'), redis_db: +v('r-db'), redis_tls: $('r-tls').checked,
     admin_username: v('a-user'), admin_password: v('a-pass'), admin_email: v('a-email'),
     site_name: v('site-name'), notice: v('site-notice'),
     channel_name: v('ch-name'), channel_slug: v('ch-slug'),

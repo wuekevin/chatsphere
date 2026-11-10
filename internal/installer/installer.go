@@ -77,6 +77,7 @@ type dbTestRequest struct {
 	Name     string `json:"name" binding:"required"`
 	User     string `json:"user" binding:"required"`
 	Password string `json:"password"`
+	TLS      bool   `json:"tls"`
 }
 
 func testDBHandler() gin.HandlerFunc {
@@ -87,7 +88,7 @@ func testDBHandler() gin.HandlerFunc {
 			return
 		}
 
-		dsn := database.BuildDSN(req.Host, req.Port, req.User, req.Password, req.Name)
+		dsn := database.BuildDSN(req.Host, req.Port, req.User, req.Password, req.Name, req.TLS)
 		db, err := database.ConnectDSN(dsn)
 		if err != nil {
 			c.JSON(http.StatusOK, gin.H{"ok": false, "error": err.Error()})
@@ -108,6 +109,7 @@ type redisTestRequest struct {
 	Port     int    `json:"port" binding:"required"`
 	Password string `json:"password"`
 	DB       int    `json:"db"`
+	TLS      bool   `json:"tls"`
 }
 
 func testRedisHandler() gin.HandlerFunc {
@@ -119,7 +121,7 @@ func testRedisHandler() gin.HandlerFunc {
 		}
 
 		addr := fmt.Sprintf("%s:%d", req.Host, req.Port)
-		rdb, err := cache.ConnectAddr(addr, req.Password, req.DB)
+		rdb, err := cache.ConnectAddr(addr, req.Password, req.DB, req.TLS)
 		if err != nil {
 			c.JSON(http.StatusOK, gin.H{"ok": false, "error": err.Error()})
 			return
@@ -144,12 +146,14 @@ type installRequest struct {
 	DBName     string `json:"db_name" binding:"required"`
 	DBUser     string `json:"db_user" binding:"required"`
 	DBPassword string `json:"db_password"`
+	DBTLS      bool   `json:"db_tls"`
 
 	// Redis
 	RedisHost     string `json:"redis_host" binding:"required"`
 	RedisPort     int    `json:"redis_port" binding:"required"`
 	RedisPassword string `json:"redis_password"`
 	RedisDB       int    `json:"redis_db"`
+	RedisTLS      bool   `json:"redis_tls"`
 
 	// Admin account
 	AdminUsername string `json:"admin_username" binding:"required,min=3,max=30"`
@@ -207,7 +211,7 @@ func runInstall(req installRequest, cfgPath string, done chan<- error, events ch
 
 	// 1. Connect to database
 	emit("log", "Connecting to database…")
-	dsn := database.BuildDSN(req.DBHost, req.DBPort, req.DBUser, req.DBPassword, req.DBName)
+	dsn := database.BuildDSN(req.DBHost, req.DBPort, req.DBUser, req.DBPassword, req.DBName, req.DBTLS)
 	db, err := database.ConnectDSN(dsn)
 	if err != nil {
 		fail(err.Error(), err)
@@ -297,6 +301,7 @@ func runInstall(req installRequest, cfgPath string, done chan<- error, events ch
 			Name:            req.DBName,
 			User:            req.DBUser,
 			Password:        req.DBPassword,
+			TLS:             req.DBTLS,
 			MaxOpenConns:    100,
 			MaxIdleConns:    10,
 			ConnMaxLifetime: 3600,
@@ -306,6 +311,7 @@ func runInstall(req installRequest, cfgPath string, done chan<- error, events ch
 			Port:     req.RedisPort,
 			Password: req.RedisPassword,
 			DB:       req.RedisDB,
+			TLS:      req.RedisTLS,
 		},
 		Chat: config.ChatConfig{
 			SiteName:         req.SiteName,

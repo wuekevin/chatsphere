@@ -1,9 +1,12 @@
 package database
 
 import (
+	"crypto/tls"
 	"fmt"
+	"sync"
 	"time"
 
+	mysqldrv "github.com/go-sql-driver/mysql"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -12,11 +15,24 @@ import (
 	"github.com/wuekevin/chatsphere/internal/model"
 )
 
+var registerTLSOnce sync.Once
+
+func registerTiDBTLS() {
+	registerTLSOnce.Do(func() {
+		_ = mysqldrv.RegisterTLSConfig("tidb", &tls.Config{MinVersion: tls.VersionTLS12})
+	})
+}
+
 // Connect opens a MySQL connection and runs auto-migrations.
 func Connect(cfg config.DatabaseConfig) (*gorm.DB, error) {
+	tlsParam := "false"
+	if cfg.TLS {
+		registerTiDBTLS()
+		tlsParam = "tidb"
+	}
 	dsn := fmt.Sprintf(
-		"%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=UTC",
-		cfg.User, cfg.Password, cfg.Host, cfg.Port, cfg.Name,
+		"%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=UTC&tls=%s",
+		cfg.User, cfg.Password, cfg.Host, cfg.Port, cfg.Name, tlsParam,
 	)
 
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
@@ -49,10 +65,16 @@ func ConnectDSN(dsn string) (*gorm.DB, error) {
 }
 
 // BuildDSN constructs a MySQL DSN from individual fields.
-func BuildDSN(host string, port int, user, password, name string) string {
+// Set useTLS=true for TiDB Cloud and other managed databases that require SSL/TLS.
+func BuildDSN(host string, port int, user, password, name string, useTLS bool) string {
+	tlsParam := "false"
+	if useTLS {
+		registerTiDBTLS()
+		tlsParam = "tidb"
+	}
 	return fmt.Sprintf(
-		"%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=UTC",
-		user, password, host, port, name,
+		"%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=UTC&tls=%s",
+		user, password, host, port, name, tlsParam,
 	)
 }
 

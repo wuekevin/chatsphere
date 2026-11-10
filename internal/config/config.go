@@ -32,6 +32,7 @@ type DatabaseConfig struct {
 	Name            string `yaml:"name"`
 	User            string `yaml:"user"`
 	Password        string `yaml:"password"`
+	TLS             bool   `yaml:"tls"`
 	MaxOpenConns    int    `yaml:"max_open_conns"`
 	MaxIdleConns    int    `yaml:"max_idle_conns"`
 	ConnMaxLifetime int    `yaml:"conn_max_lifetime"`
@@ -42,6 +43,7 @@ type CacheConfig struct {
 	Port     int    `yaml:"port"`
 	Password string `yaml:"password"`
 	DB       int    `yaml:"db"`
+	TLS      bool   `yaml:"tls"`
 }
 
 type ChatConfig struct {
@@ -140,6 +142,9 @@ database:
   # Database password — stored with mode 0600, never logged
   password: %q
 
+  # Enable TLS/SSL — set true for TiDB Cloud and other managed databases
+  tls: %v
+
   # Maximum number of open connections to the database
   max_open_conns: %d
 
@@ -164,6 +169,9 @@ cache:
 
   # Redis logical database index (0–15)
   db: %d
+
+  # Enable TLS/SSL — set true for Upstash Redis and other managed Redis services
+  tls: %v
 
 # ────────────────────────────────────────────────────────────
 # Chat Behaviour
@@ -205,6 +213,7 @@ admin:
 		cfg.Database.Name,
 		cfg.Database.User,
 		cfg.Database.Password,
+		cfg.Database.TLS,
 		cfg.Database.MaxOpenConns,
 		cfg.Database.MaxIdleConns,
 		cfg.Database.ConnMaxLifetime,
@@ -212,6 +221,7 @@ admin:
 		cfg.Cache.Port,
 		cfg.Cache.Password,
 		cfg.Cache.DB,
+		cfg.Cache.TLS,
 		cfg.Chat.SiteName,
 		cfg.Chat.Notice,
 		cfg.Chat.MaxMessageLength,
