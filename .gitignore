@@ -28,3 +28,10 @@ Thumbs.db
 postgres_data/
 mysql_data/
 redis_data/
+
+# Redis local dump
+dump.rdb
+
+# BMad planning artifacts
+_bmad/
+_bmad-output/
