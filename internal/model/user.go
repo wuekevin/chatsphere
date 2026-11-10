@@ -22,7 +22,7 @@ type User struct {
 	Reputation   int       `gorm:"default:0" json:"reputation"`
 	Role         Role      `gorm:"type:varchar(20);default:'member'" json:"role"`
 	IsBanned     bool      `gorm:"default:false" json:"is_banned"`
-	LastSeenAt   time.Time `json:"last_seen_at"`
+	LastSeenAt   *time.Time `gorm:"default:null" json:"last_seen_at,omitempty"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
 }

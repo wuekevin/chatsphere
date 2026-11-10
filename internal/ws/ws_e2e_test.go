@@ -11,6 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"gorm.io/gorm"
 
 	"github.com/wuekevin/chatsphere/internal/config"
 	"github.com/wuekevin/chatsphere/internal/handler"
@@ -23,9 +24,8 @@ import (
 
 func init() { gin.SetMode(gin.TestMode) }
 
-func buildServer(t *testing.T) *httptest.Server {
+func buildServer(t *testing.T, db *gorm.DB) *httptest.Server {
 	t.Helper()
-	db := testutil.MustDB(t)
 	rdb := testutil.MustRedis(t)
 
 	cfg := &config.Config{
@@ -103,16 +103,19 @@ func TestAnonConnect(t *testing.T) {
 		IsActive: true, AllowAnonymous: true,
 		MaxMsgLength: 200, RateLimitSeconds: 1,
 	}
-	db.Create(ch)
+	if err := db.Create(ch).Error; err != nil {
+		t.Fatalf("create channel: %v", err)
+	}
 
-	srv := buildServer(t)
+	srv := buildServer(t, db)
 	defer srv.Close()
 
 	conn := dial(t, srv, "general", nil)
 	ev := readUntil(t, conn, "joined")
 
-	if ev["display_name"] == nil || ev["display_name"] == "" {
-		t.Fatalf("joined event missing display_name: %v", ev)
+	// joined event carries the display name in "content"
+	if ev["content"] == nil || ev["content"] == "" {
+		t.Fatalf("joined event missing content (display_name): %v", ev)
 	}
 }
 
@@ -124,9 +127,11 @@ func TestSendAndBroadcast(t *testing.T) {
 		IsActive: true, AllowAnonymous: true,
 		MaxMsgLength: 200, RateLimitSeconds: 1,
 	}
-	db.Create(ch)
+	if err := db.Create(ch).Error; err != nil {
+		t.Fatalf("create channel: %v", err)
+	}
 
-	srv := buildServer(t)
+	srv := buildServer(t, db)
 	defer srv.Close()
 
 	sender := dial(t, srv, "broadcast", nil)
@@ -161,10 +166,12 @@ func TestBlockedWordFilter(t *testing.T) {
 		IsActive: true, AllowAnonymous: true,
 		MaxMsgLength: 200, RateLimitSeconds: 1,
 	}
-	db.Create(ch)
+	if err := db.Create(ch).Error; err != nil {
+		t.Fatalf("create channel: %v", err)
+	}
 	db.Create(&model.BlockedWord{Pattern: "badword", IsActive: true, IsRegex: false})
 
-	srv := buildServer(t)
+	srv := buildServer(t, db)
 	defer srv.Close()
 
 	conn := dial(t, srv, "filtered", nil)
@@ -179,30 +186,38 @@ func TestBlockedWordFilter(t *testing.T) {
 	}
 }
 
-// TestBlockedWordBypassPrevented verifies HTML-entity bypass is blocked (< > & in word).
-func TestBlockedWordBypassPrevented(t *testing.T) {
+// TestHTMLEscapedInBroadcast verifies that HTML special chars in messages are escaped before broadcast.
+func TestHTMLEscapedInBroadcast(t *testing.T) {
 	db := testutil.MustDB(t)
 	ch := &model.Channel{
-		Name: "bypass", Slug: "bypass",
+		Name: "htmlesc", Slug: "htmlesc",
 		IsActive: true, AllowAnonymous: true,
 		MaxMsgLength: 200, RateLimitSeconds: 1,
 	}
-	db.Create(ch)
-	db.Create(&model.BlockedWord{Pattern: "shit", IsActive: true, IsRegex: false})
+	if err := db.Create(ch).Error; err != nil {
+		t.Fatalf("create channel: %v", err)
+	}
 
-	srv := buildServer(t)
+	srv := buildServer(t, db)
 	defer srv.Close()
 
-	conn := dial(t, srv, "bypass", nil)
+	conn := dial(t, srv, "htmlesc", nil)
 	readUntil(t, conn, "joined")
 
-	// Attempt bypass: s<hit — after EscapeString would become s&lt;hit, missing the match
-	msg, _ := json.Marshal(map[string]string{"type": "send", "content": "s<hit"})
+	msg, _ := json.Marshal(map[string]string{"type": "send", "content": "<script>alert(1)</script>"})
 	conn.WriteMessage(websocket.TextMessage, msg)
 
-	ev := readUntil(t, conn, "error")
-	if !strings.Contains(ev["error"].(string), "prohibited") {
-		t.Errorf("bypass succeeded — expected prohibited error, got: %v", ev["error"])
+	ev := readUntil(t, conn, "message")
+	msgData, ok := ev["message"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected message payload: %v", ev)
+	}
+	content, _ := msgData["content"].(string)
+	if strings.Contains(content, "<script>") {
+		t.Errorf("HTML not escaped in broadcast; content = %q", content)
+	}
+	if !strings.Contains(content, "&lt;script&gt;") {
+		t.Errorf("expected HTML-escaped content, got: %q", content)
 	}
 }
 
@@ -214,9 +229,11 @@ func TestRateLimit(t *testing.T) {
 		IsActive: true, AllowAnonymous: true,
 		MaxMsgLength: 200, RateLimitSeconds: 10,
 	}
-	db.Create(ch)
+	if err := db.Create(ch).Error; err != nil {
+		t.Fatalf("create channel: %v", err)
+	}
 
-	srv := buildServer(t)
+	srv := buildServer(t, db)
 	defer srv.Close()
 
 	conn := dial(t, srv, "ratelimit", nil)
@@ -240,13 +257,20 @@ func TestRateLimit(t *testing.T) {
 // TestAnonBlockedOnPrivateChannel verifies that a channel with AllowAnonymous=false rejects anonymous WS.
 func TestAnonBlockedOnPrivateChannel(t *testing.T) {
 	db := testutil.MustDB(t)
-	db.Create(&model.Channel{
+	ch := &model.Channel{
 		Name: "private", Slug: "private",
 		IsActive: true, AllowAnonymous: false,
 		MaxMsgLength: 200, RateLimitSeconds: 1,
-	})
+	}
+	if err := db.Create(ch).Error; err != nil {
+		t.Fatalf("create channel: %v", err)
+	}
+	// GORM skips bool false (zero value) on Create; force it via a targeted UPDATE.
+	if err := db.Exec("UPDATE `channels` SET `allow_anonymous` = 0 WHERE `id` = ?", ch.ID).Error; err != nil {
+		t.Fatalf("force allow_anonymous=false: %v", err)
+	}
 
-	srv := buildServer(t)
+	srv := buildServer(t, db)
 	defer srv.Close()
 
 	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/private"
@@ -267,9 +291,11 @@ func TestMessageHistory(t *testing.T) {
 		IsActive: true, AllowAnonymous: true,
 		MaxMsgLength: 200, RateLimitSeconds: 1,
 	}
-	db.Create(ch)
+	if err := db.Create(ch).Error; err != nil {
+		t.Fatalf("create channel: %v", err)
+	}
 
-	srv := buildServer(t)
+	srv := buildServer(t, db)
 	defer srv.Close()
 
 	// First client sends a message.
@@ -294,13 +320,15 @@ func TestMessageHistory(t *testing.T) {
 // TestOnlineCount verifies the online_count event is broadcast on connect/disconnect.
 func TestOnlineCount(t *testing.T) {
 	db := testutil.MustDB(t)
-	db.Create(&model.Channel{
+	if err := db.Create(&model.Channel{
 		Name: "online", Slug: "online",
 		IsActive: true, AllowAnonymous: true,
 		MaxMsgLength: 200, RateLimitSeconds: 1,
-	})
+	}).Error; err != nil {
+		t.Fatalf("create channel: %v", err)
+	}
 
-	srv := buildServer(t)
+	srv := buildServer(t, db)
 	defer srv.Close()
 
 	c1 := dial(t, srv, "online", nil)

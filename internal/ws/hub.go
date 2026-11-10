@@ -91,6 +91,7 @@ func (h *Hub) addClient(c *Client) {
 	// Send identity (+ channel accent color) before history so the widget labels
 	// own messages correctly and applies the right theme color immediately.
 	go func() {
+		defer func() { recover() }() // client may disconnect while this goroutine runs
 		var accent string
 		if c.channel != nil {
 			accent = c.channel.AccentColor
