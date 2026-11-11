@@ -24,6 +24,7 @@ type ServerConfig struct {
 	Debug          bool     `yaml:"debug"`
 	SecretKey      string   `yaml:"secret_key"`
 	AllowedOrigins []string `yaml:"allowed_origins"`
+	CountryHeaders []string `yaml:"country_headers"`
 }
 
 type DatabaseConfig struct {
@@ -92,6 +93,13 @@ func renderYAML(cfg *Config) string {
 	if origins == "" {
 		origins = "    - \"*\"\n"
 	}
+	countryHdrs := ""
+	for _, h := range cfg.Server.CountryHeaders {
+		countryHdrs += fmt.Sprintf("    - %q\n", h)
+	}
+	if countryHdrs == "" {
+		countryHdrs = "    - \"CF-IPCountry\"\n    - \"X-Country\"\n"
+	}
 
 	return fmt.Sprintf(`# ============================================================
 # ChatSphere — Configuration File
@@ -122,6 +130,13 @@ server:
   # CORS — a list of origins permitted to embed the widget or call the API.
   # Use ["*"] to allow any origin (fine for public chat; tighter for private).
   allowed_origins:
+%s
+  # Headers checked (in order) for the visitor's ISO-3166-1 alpha-2 country code.
+  # First non-empty 2-letter value wins. Add or reorder for your CDN:
+  #   Cloudflare:     CF-IPCountry
+  #   Tencent EdgeOne: EO-Client-Country-Region
+  #   Custom header:  <your header name>
+  country_headers:
 %s
 # ────────────────────────────────────────────────────────────
 # Database (MySQL 8.0+ / TiDB)
@@ -208,6 +223,7 @@ admin:
 		cfg.Server.Debug,
 		cfg.Server.SecretKey,
 		origins,
+		countryHdrs,
 		cfg.Database.Host,
 		cfg.Database.Port,
 		cfg.Database.Name,

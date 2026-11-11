@@ -80,13 +80,7 @@ func wsHandler(chSvc *service.ChannelService, userRepo repository.UserRepository
 				role = string(user.Role)
 				isAnon = false
 				if country == "" {
-					country = c.GetHeader("CF-IPCountry")
-					if country == "" {
-						country = c.GetHeader("X-Country")
-					}
-					if len(country) != 2 {
-						country = ""
-					}
+					country = detectCountry(c, cfg)
 				}
 			}
 		}
@@ -98,13 +92,7 @@ func wsHandler(chSvc *service.ChannelService, userRepo repository.UserRepository
 			}
 			displayName = anonName(anonID)
 			avatarColor = randomColor(displayName)
-			country = c.GetHeader("CF-IPCountry")
-			if country == "" {
-				country = c.GetHeader("X-Country")
-			}
-			if len(country) != 2 {
-				country = ""
-			}
+			country = detectCountry(c, cfg)
 		}
 
 		ws.ServeWS(hub, channel, c.Writer, c.Request,
@@ -149,6 +137,22 @@ func getMessagesHandler(chSvc *service.ChannelService, msgSvc *service.MessageSe
 
 // anonName returns a stable display name from an 8-hex-char anonID.
 // 20 adjectives × 20 nouns = 400 possible names.
+// detectCountry reads the visitor's ISO-3166-1 alpha-2 country code from the
+// first configured header that returns a 2-character value.
+// Falls back to CF-IPCountry then X-Country when country_headers is not set.
+func detectCountry(c *gin.Context, cfg *config.Config) string {
+	hdrs := cfg.Server.CountryHeaders
+	if len(hdrs) == 0 {
+		hdrs = []string{"CF-IPCountry", "X-Country"}
+	}
+	for _, h := range hdrs {
+		if v := c.GetHeader(h); len(v) == 2 {
+			return v
+		}
+	}
+	return ""
+}
+
 func anonName(anonID string) string {
 	adjectives := []string{
 		"Quick", "Calm", "Bold", "Wise", "Bright", "Swift", "Cool", "Kind",

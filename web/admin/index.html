@@ -856,7 +856,7 @@ const LEVEL_THRESHOLDS = [0,10,50,150,300,500,1000,2000,5000,10000]
 const LEVEL_NAMES_ZH = ['初入','探索','进阶','精英','卓越','大师','宗师','传奇','至尊','永恒']
 const LEVEL_NAMES_EN = ['Novice','Explorer','Advanced','Elite','Premium','Master','Grandmaster','Legend','Supreme','Eternal']
 function levelFromXP(xp, role) {
-  if (role === 'admin') return { lv: 'MAX', name: lang === 'en' ? '创世者 Founder' : '创世者 Founder', css: '#1a0505;color:#ef4444' }
+  if (role === 'admin') return { lv: 'MAX', name: lang === 'en' ? 'Founder' : '创世者', css: '#1a0505;color:#ef4444' }
   let lv = 1
   for (let i = 0; i < LEVEL_THRESHOLDS.length; i++) {
     if (xp >= LEVEL_THRESHOLDS[i]) lv = i + 1
@@ -868,7 +868,7 @@ function levelFromXP(xp, role) {
 }
 function levelBadge(xp, role) {
   const { lv, name, css } = levelFromXP(xp, role)
-  const tag = lv === 'MAX' ? '创世者' : `LV.${lv}`
+  const tag = lv === 'MAX' ? (lang === 'en' ? 'Admin' : '管理员') : `LV.${lv}`
   return `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:2px 7px;border-radius:4px;background:${css.split(';')[0].trim()};${css.includes('color:') ? 'color:'+css.split('color:')[1].trim() : ''}">${tag} ${name}</span>`
 }
 function v(id)  { return (document.getElementById(id)?.value||'').trim() }
