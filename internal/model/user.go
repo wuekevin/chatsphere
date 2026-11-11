@@ -22,10 +22,11 @@ type User struct {
 	Country      string    `gorm:"size:2" json:"country,omitempty"`
 	Reputation   int       `gorm:"default:0" json:"reputation"`
 	Role         Role      `gorm:"type:varchar(20);default:'member'" json:"role"`
-	IsBanned     bool      `gorm:"default:false" json:"is_banned"`
-	LastSeenAt   *time.Time `gorm:"default:null" json:"last_seen_at,omitempty"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	IsBanned       bool       `gorm:"default:false" json:"is_banned"`
+	LastSeenAt     *time.Time `gorm:"default:null" json:"last_seen_at,omitempty"`
+	TelegramChatID *int64     `gorm:"default:null" json:"telegram_chat_id,omitempty"`
+	CreatedAt      time.Time  `json:"created_at"`
+	UpdatedAt      time.Time  `json:"updated_at"`
 }
 
 func (User) TableName() string {

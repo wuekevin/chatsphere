@@ -154,12 +154,8 @@ func (c *Client) handleSend(content string) {
 		c.sendError(fmt.Sprintf("Message exceeds %d characters.", maxLen))
 		return
 	}
-	// Blocked-word check must run on raw content before HTML escaping,
-	// otherwise inserting < > & inside a blocked word bypasses the filter.
-	if c.hub.IsBlocked(content) {
-		c.sendError("Your message contains prohibited content.")
-		return
-	}
+	// Sanitize blocked words before HTML escaping (escaping expands some bytes).
+	content = c.hub.SanitizeBlocked(content)
 
 	content = html.EscapeString(content)
 
@@ -299,14 +295,28 @@ func (c *Client) handleDM(toUserID uint64, content string) {
 		return
 	}
 
-	// Deliver to recipient (all their active connections)
+	// Deliver to recipient (all their active connections).
+	var recipientOnline bool
 	if c.hub.userReg != nil {
-		c.hub.userReg.Send(toUserID, payload)
+		recipientOnline = c.hub.userReg.Send(toUserID, payload)
 	}
 	// Echo back to sender
 	select {
 	case c.send <- payload:
 	default:
+	}
+
+	// Telegram push notification when recipient is offline.
+	if !recipientOnline && c.hub.tgNotifier != nil && c.hub.tgNotifier.Enabled() && toUser.TelegramChatID != nil {
+		fromName := c.displayName
+		msgContent := dm.Content
+		chatID := *toUser.TelegramChatID
+		senderID := *c.userID
+		go func() {
+			ctx := context.Background()
+			c.hub.tgNotifier.NotifyDM(ctx, chatID, fromName, msgContent)
+			c.hub.tgNotifier.SetDMContext(ctx, chatID, senderID)
+		}()
 	}
 }
 

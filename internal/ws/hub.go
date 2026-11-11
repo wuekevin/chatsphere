@@ -9,12 +9,20 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 
 	"github.com/wuekevin/chatsphere/internal/model"
 )
+
+// TelegramNotifier is an optional integration for DM push notifications via Telegram.
+type TelegramNotifier interface {
+	Enabled() bool
+	NotifyDM(ctx context.Context, toChatID int64, fromName, content string)
+	SetDMContext(ctx context.Context, toChatID int64, fromUserID uint64)
+}
 
 type blockedPattern struct {
 	raw string
@@ -48,9 +56,11 @@ type Hub struct {
 	blockedMu       sync.RWMutex
 	blockedPatterns []blockedPattern
 	blockedLoadedAt time.Time
+
+	tgNotifier TelegramNotifier
 }
 
-func newHub(slug string, channelID uint64, db *gorm.DB, rdb *redis.Client, userReg *UserRegistry) *Hub {
+func newHub(slug string, channelID uint64, db *gorm.DB, rdb *redis.Client, userReg *UserRegistry, tgn TelegramNotifier) *Hub {
 	return &Hub{
 		clients:     make(map[*Client]bool),
 		channelSlug: slug,
@@ -61,6 +71,7 @@ func newHub(slug string, channelID uint64, db *gorm.DB, rdb *redis.Client, userR
 		db:          db,
 		redis:       rdb,
 		userReg:     userReg,
+		tgNotifier:  tgn,
 	}
 }
 
@@ -333,6 +344,7 @@ func (h *Hub) detectAndNotifyMentions(content string, msg *model.Message, sender
 }
 
 // loadBlockedPatterns queries the DB and rebuilds the in-memory cache.
+// Every pattern (regex or plain) is compiled to a *regexp.Regexp for uniform replace.
 func (h *Hub) loadBlockedPatterns() {
 	var words []model.BlockedWord
 	h.db.Where("is_active = true AND (channel_id IS NULL OR channel_id = ?)", h.channelID).Find(&words)
@@ -342,6 +354,12 @@ func (h *Hub) loadBlockedPatterns() {
 		p := blockedPattern{raw: w.Pattern}
 		if w.IsRegex {
 			re, err := regexp.Compile(w.Pattern)
+			if err != nil {
+				continue
+			}
+			p.re = re
+		} else {
+			re, err := regexp.Compile(`(?i)` + regexp.QuoteMeta(w.Pattern))
 			if err != nil {
 				continue
 			}
@@ -356,9 +374,9 @@ func (h *Hub) loadBlockedPatterns() {
 	h.blockedMu.Unlock()
 }
 
-// IsBlocked reports whether content matches any active blocked word/pattern.
+// SanitizeBlocked replaces matched blocked words/patterns with *** in content.
 // The cache refreshes automatically after 5 minutes.
-func (h *Hub) IsBlocked(content string) bool {
+func (h *Hub) SanitizeBlocked(content string) string {
 	h.blockedMu.RLock()
 	stale := time.Since(h.blockedLoadedAt) > 5*time.Minute
 	h.blockedMu.RUnlock()
@@ -367,17 +385,15 @@ func (h *Hub) IsBlocked(content string) bool {
 		h.loadBlockedPatterns()
 	}
 
-	lower := strings.ToLower(content)
 	h.blockedMu.RLock()
 	defer h.blockedMu.RUnlock()
 	for _, p := range h.blockedPatterns {
-		if p.re != nil {
-			if p.re.MatchString(content) {
-				return true
-			}
-		} else if strings.Contains(lower, strings.ToLower(p.raw)) {
-			return true
+		if p.re == nil {
+			continue
 		}
+		content = p.re.ReplaceAllStringFunc(content, func(m string) string {
+			return strings.Repeat("*", utf8.RuneCountInString(m))
+		})
 	}
-	return false
+	return content
 }

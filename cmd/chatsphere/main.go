@@ -21,6 +21,7 @@ import (
 	"github.com/wuekevin/chatsphere/internal/installer"
 	"github.com/wuekevin/chatsphere/internal/repository"
 	"github.com/wuekevin/chatsphere/internal/service"
+	"github.com/wuekevin/chatsphere/internal/telegram"
 	"github.com/wuekevin/chatsphere/internal/ws"
 )
 
@@ -73,6 +74,13 @@ func main() {
 	// Hub registry — creates per-channel Hub goroutines on demand
 	registry := ws.NewHubRegistry(db, rdb, userReg)
 
+	// Telegram bot service (optional — only active when bot_token is configured)
+	tgSvc := telegram.NewService(cfg.Telegram.BotToken, cfg.Telegram.BotName, db, rdb, userReg)
+	if tgSvc.Enabled() {
+		registry.SetTelegramNotifier(tgSvc)
+		log.Printf("[chatsphere] Telegram bot @%s enabled", cfg.Telegram.BotName)
+	}
+
 	// Build router
 	r := gin.New()
 	r.Use(gin.Recovery())
@@ -99,6 +107,7 @@ func main() {
 	handler.RegisterChat(r, chSvc, msgSvc, userRepo, registry, cfg)
 	handler.RegisterAdmin(r, db, rdb, cfg)
 	handler.RegisterWidget(r, cfg)
+	handler.RegisterTelegram(r, tgSvc, cfg)
 
 	// Redirect root to admin panel
 	r.GET("/", func(c *gin.Context) {

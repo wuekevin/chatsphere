@@ -56,25 +56,52 @@
       '[data-cs="root"][data-pos="top-right"]{top:var(--offset,20px);right:var(--offset,20px)}',
       '[data-cs="root"][data-pos="top-left"]{top:var(--offset,20px);left:var(--offset,20px)}',
 
-      /* ── Button ── */
+      /* ── Button (card shape when closed, circle when open) ── */
       '@keyframes cs-pop{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}',
       '[data-cs="btn"]{',
-      '  width:var(--btn);height:var(--btn);border-radius:50%;',
+      '  width:260px;height:56px;border-radius:28px;',
       '  background:var(--accent);border:none;cursor:pointer;',
-      '  display:flex;align-items:center;justify-content:center;',
+      '  display:flex;align-items:center;gap:10px;padding:0 12px 0 10px;',
       '  box-shadow:0 4px 20px var(--accent-glow);',
-      '  transition:transform .2s,box-shadow .2s;position:relative;',
+      '  transition:width .3s cubic-bezier(.4,0,.2,1),height .3s,border-radius .3s,padding .3s;',
+      '  position:relative;overflow:hidden;',
       '  animation:cs-pop .4s cubic-bezier(.34,1.56,.64,1) .5s both;',
       '}',
-      '[data-cs="btn"]:hover{transform:scale(1.08)}',
-      '[data-cs="btn"] svg{width:28px;height:28px;fill:#000;transition:transform .3s}',
-      '[data-cs="btn"].cs-open svg{transform:rotate(180deg) scale(.85)}',
+      '[data-cs="btn"]:hover{box-shadow:0 6px 24px var(--accent-glow)}',
+      /* icon circle inside the card */
+      '[data-cs="btn-icon"]{',
+      '  width:36px;height:36px;min-width:36px;border-radius:50%;',
+      '  background:rgba(0,0,0,.18);display:flex;align-items:center;justify-content:center;',
+      '  transition:opacity .2s;flex-shrink:0;',
+      '}',
+      '[data-cs="btn-icon"] svg{width:20px;height:20px;fill:#fff}',
+      /* text column */
+      '[data-cs="btn-info"]{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;overflow:hidden;transition:opacity .2s,max-width .3s}',
+      '[data-cs="btn-title"]{font-size:13px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+      '[data-cs="btn-preview"]{font-size:11px;color:rgba(255,255,255,.75);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+      /* close icon (shown when open) */
+      '[data-cs="btn-close-icon"]{width:20px;height:20px;fill:#fff;opacity:0;position:absolute;transition:opacity .2s;pointer-events:none}',
+      /* open state: collapse to circle */
+      '[data-cs="btn"].cs-open{width:var(--btn);height:var(--btn);padding:0;border-radius:50%;justify-content:center}',
+      '[data-cs="btn"].cs-open [data-cs="btn-icon"]{opacity:0;width:0;min-width:0;overflow:hidden}',
+      '[data-cs="btn"].cs-open [data-cs="btn-info"]{opacity:0;max-width:0}',
+      '[data-cs="btn"].cs-open [data-cs="btn-close-icon"]{opacity:1}',
+      /* unread badge (top-right of card) */
       '[data-cs="badge"]{',
       '  position:absolute;top:-3px;right:-3px;min-width:18px;height:18px;',
       '  background:var(--err);color:#fff;border-radius:9px;font-size:11px;font-weight:700;',
       '  display:none;align-items:center;justify-content:center;padding:0 4px;',
       '  border:2px solid var(--bg);',
       '}',
+      /* DM @ badge (bottom-right of card, hidden when open) */
+      '[data-cs="dm-badge"]{',
+      '  position:absolute;bottom:-2px;right:10px;min-width:18px;height:18px;',
+      '  background:var(--accent2,#6366f1);color:#fff;border-radius:9px;font-size:10px;font-weight:700;',
+      '  display:none;align-items:center;justify-content:center;padding:0 4px;',
+      '  border:2px solid var(--bg);',
+      '}',
+      '[data-cs="dm-badge"].cs-vis{display:flex}',
+      '[data-cs="btn"].cs-open [data-cs="dm-badge"]{display:none!important}',
 
       /* ── Panel ── */
       '[data-cs="panel"]{',
@@ -227,17 +254,35 @@
       '  border-top:1px solid var(--border);flex-shrink:0;',
       '  background:var(--surface);',
       '}',
-      /* Emoji grid (in-flow, above input row) */
+      /* Emoji picker (in-flow, above input row) */
       '[data-cs="emoji"]{',
-      '  display:none;flex-wrap:wrap;gap:4px;',
-      '  padding:8px 10px;border-bottom:1px solid var(--border);',
+      '  display:none;flex-direction:column;',
+      '  border-bottom:1px solid var(--border);',
+      '  max-height:180px;',
       '}',
       '[data-cs="emoji"].cs-open{display:flex}',
-      '[data-cs="emoji"] span{',
+      '[data-cs="emoji-tabs"]{',
+      '  display:flex;overflow-x:auto;padding:4px 8px 0;gap:2px;flex-shrink:0;',
+      '  border-bottom:1px solid var(--border);scrollbar-width:none;',
+      '}',
+      '[data-cs="emoji-tabs"]::-webkit-scrollbar{display:none}',
+      '[data-cs="etab"]{',
+      '  flex-shrink:0;border:none;background:none;cursor:pointer;',
+      '  font-size:16px;padding:4px 6px;border-radius:6px 6px 0 0;',
+      '  opacity:.55;transition:opacity .15s,background .15s;',
+      '}',
+      '[data-cs="etab"]:hover{opacity:.85;background:var(--surface-2)}',
+      '[data-cs="etab"].cs-active{opacity:1;background:var(--surface-2)}',
+      '[data-cs="emoji-grid"]{',
+      '  display:flex;flex-wrap:wrap;gap:3px;',
+      '  padding:6px 8px;overflow-y:auto;flex:1;',
+      '  scrollbar-width:thin;',
+      '}',
+      '[data-cs="emoji-grid"] span{',
       '  font-size:20px;cursor:pointer;padding:3px 4px;',
       '  border-radius:4px;transition:background .1s;',
       '}',
-      '[data-cs="emoji"] span:hover{background:var(--surface-2)}',
+      '[data-cs="emoji-grid"] span:hover{background:var(--surface-2)}',
       '[data-cs="input-row"]{display:flex;align-items:flex-end;gap:6px;padding:8px 10px 10px}',
       '[data-cs="ibtn"]{',
       '  width:44px;height:44px;min-width:44px;border-radius:50%;border:none;cursor:pointer;',
@@ -384,7 +429,7 @@
       '    border-radius:var(--radius) var(--radius) 0 0;',
       '    bottom:calc(var(--btn) + 10px);transform-origin:bottom center;',
       '  }',
-      '  [data-cs="btn"]{margin:10px auto}',
+      '  [data-cs="btn"]{margin:10px auto;max-width:calc(100vw - 20px)}',
       '}',
     ].join('\n');
     document.head.appendChild(s);
@@ -400,10 +445,14 @@
       .replace(/\n/g, '<br>');
   }
 
-  var EMOJIS = [
-    '😀','😂','😍','🥰','😎','🤔','😮','😢','😡','🎉',
-    '👍','👎','❤️','🔥','⭐','💯','🙌','🤝','👏','🚀',
-    '💬','✅','❌','⚠️','💡','🌍','🎯','🤩','😴','🤣',
+  var EMOJI_CATS = [
+    { key:'recent', icon:'🕐', label:'Recent',  emojis:[] },
+    { key:'faces',  icon:'😊', label:'Faces',   emojis:['😀','😂','😍','🥰','😎','🤔','😮','😢','😡','🤩','🤣','😅','🥳','😴','🫡','😤','🤯','🥺','😇','🤗','😬','🤭','🫠','😑','😐','🙂','😶','😳','🫢','😲'] },
+    { key:'hands',  icon:'👏', label:'Hands',   emojis:['👍','👎','👏','🙌','🤝','🤜','🤛','✊','👊','🫶','🤲','🙏','💪','✌️','🤞','🫰','🤟','🤘','🤙','👋','🤚','✋','🖐️','👌','🤌','🤏'] },
+    { key:'love',   icon:'❤️', label:'Love',    emojis:['❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','❤️‍🔥','💕','💞','💓','💗','💖','💘','💝','💟','♥️','🫀','💔','❣️'] },
+    { key:'animals',icon:'🐼', label:'Animals', emojis:['🐼','🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🐔','🐧','🐦','🦆','🦅','🦉','🦇','🐺','🐗','🐴','🦄','🐝','🪱','🐛','🦋'] },
+    { key:'food',   icon:'🍎', label:'Food',    emojis:['🍎','🍊','🍋','🍇','🍓','🫐','🍒','🍑','🥭','🍍','🥥','🥝','🍅','🥑','🫛','🥦','🥕','🌽','🫚','🧄','🧅','🥔','🫙','🧅','🍕','🍔','🌮','🌯','🥗','🍜'] },
+    { key:'other',  icon:'🚀', label:'Other',   emojis:['🚀','🌍','🎯','💡','🔥','⭐','💯','🎉','✅','❌','⚠️','💬','🏆','🎮','🎵','🎸','🎤','📱','💻','⌨️','🖥️','📷','📸','🎥','📺','⚽','🏀','🏈','⚾','🎱'] },
   ];
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -588,6 +637,7 @@
       // Header
       if (this.langBtn) this.langBtn.textContent = this.lang === 'en' ? '中' : 'EN';
       if (this.titleEl && !this.title) this.titleEl.textContent = this.lang === 'en' ? 'Chat' : '聊天';
+      if (this.btnTitleEl && !this.title) this.btnTitleEl.textContent = this.lang === 'en' ? 'Chat' : '聊天';
       if (this.onlineSpan) this.onlineSpan.textContent = (this.onlineCount || 0) + this.wt('online');
       if (this.minBtn)  { this.minBtn.title = this.wt('minimise'); this.minBtn.setAttribute('aria-label', this.wt('minimise')); }
       if (this.dmBtnEl) { this.dmBtnEl.title = this.wt('dm'); this.dmBtnEl.setAttribute('aria-label', this.wt('dm')); }
@@ -665,17 +715,40 @@
         root.style.setProperty('--accent-glow', 'rgba('+ar+','+ag+','+ab2+',.35)');
       }
 
-      // ── Trigger button
+      // ── Trigger button (card shape)
       var btn = this.btn = h('button', {
         'data-cs':      'btn',
         'aria-label':   'Open chat',
         'aria-expanded':'false',
       });
-      btn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>';
+
+      // Icon circle
+      var btnIcon = h('div', { 'data-cs': 'btn-icon' });
+      btnIcon.innerHTML = '<svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>';
+
+      // Info column: title + preview
+      var btnInfo = h('div', { 'data-cs': 'btn-info' });
+      var btnTitleEl = this.btnTitleEl = h('div', { 'data-cs': 'btn-title', 'text': this.title || this.wt('placeholder') });
+      var btnPreviewEl = this.btnPreviewEl = h('div', { 'data-cs': 'btn-preview', 'text': '' });
+      btnInfo.appendChild(btnTitleEl);
+      btnInfo.appendChild(btnPreviewEl);
+
+      // Close icon (shows when panel is open)
+      var btnCloseIcon = h('div', { 'data-cs': 'btn-close-icon' });
+      btnCloseIcon.innerHTML = '<svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>';
+
+      btn.appendChild(btnIcon);
+      btn.appendChild(btnInfo);
+      btn.appendChild(btnCloseIcon);
       btn.addEventListener('click', function () { self.toggle(); });
 
+      // Unread badge (top-right)
       this.badge = cs('badge');
       btn.appendChild(this.badge);
+
+      // DM @ badge (bottom-right, visible when DMs are unread)
+      this.dmLauncherBadge = h('div', { 'data-cs': 'dm-badge', 'text': '@' });
+      btn.appendChild(this.dmLauncherBadge);
 
       // ── Panel
       var panel = this.panel = cs('panel');
@@ -810,15 +883,42 @@
       var self = this;
       var footer = cs('footer');
 
-      // Emoji grid (shown above input row when open)
+      // Emoji picker with category tabs
       var picker = this.emojiPicker = cs('emoji');
-      EMOJIS.forEach(function (e) {
-        var sp = document.createElement('span');
-        sp.textContent = e;
-        sp.title = e;
-        sp.addEventListener('click', function () { self._insertEmoji(e); });
-        picker.appendChild(sp);
+
+      var tabsRow = h('div', { 'data-cs': 'emoji-tabs' });
+      var emojiGrid = this.emojiGrid = h('div', { 'data-cs': 'emoji-grid' });
+      var self2 = self;
+
+      function renderEmojiCat(cat) {
+        emojiGrid.innerHTML = '';
+        cat.emojis.forEach(function (e) {
+          var sp = document.createElement('span');
+          sp.textContent = e;
+          sp.title = e;
+          sp.addEventListener('click', function () { self2._insertEmoji(e); });
+          emojiGrid.appendChild(sp);
+        });
+      }
+
+      EMOJI_CATS.forEach(function (cat, idx) {
+        var tab = h('button', { 'data-cs': 'etab', 'title': cat.label, 'aria-label': cat.label });
+        tab.textContent = cat.icon;
+        tab.addEventListener('click', function (e) {
+          e.stopPropagation();
+          tabsRow.querySelectorAll('[data-cs="etab"]').forEach(function (t) { t.classList.remove('cs-active'); });
+          tab.classList.add('cs-active');
+          renderEmojiCat(cat);
+        });
+        if (idx === 1) tab.classList.add('cs-active'); // default: faces
+        tabsRow.appendChild(tab);
       });
+
+      picker.appendChild(tabsRow);
+      picker.appendChild(emojiGrid);
+
+      // Render default category on first open
+      renderEmojiCat(EMOJI_CATS[1]);
       footer.appendChild(picker);
 
       // Input row
@@ -948,7 +1048,7 @@
           if (evt.message) {
             this._renderMsg(evt.message);
             if (!this.isOpen) {
-              this._incUnread();
+              this._incUnread(evt.message);
             } else if (this.nearBottom) {
               this._scrollBottom();
             } else {
@@ -1382,10 +1482,15 @@
 
     // ── Unread ────────────────────────────────────────────────────────────────
 
-    _incUnread: function () {
+    _incUnread: function (msg) {
       this.unread++;
       this.badge.style.display = 'flex';
       this.badge.textContent = this.unread > 9 ? '9+' : this.unread;
+      if (msg && this.btnPreviewEl) {
+        var sender = msg.display_name || '';
+        var text = (msg.content || '').replace(/<[^>]*>/g, '').substring(0, 40);
+        this.btnPreviewEl.textContent = sender ? sender + ': ' + text : text;
+      }
       this._playNotifSound();
     },
 
@@ -1412,7 +1517,17 @@
     _clearUnread: function () {
       this.unread = 0;
       this.badge.style.display = 'none';
+      if (this.btnPreviewEl) this.btnPreviewEl.textContent = '';
       this._hideNewMsgBtn();
+    },
+
+    _updateDMLauncherBadge: function () {
+      var total = 0;
+      var convs = this.dmConvs;
+      Object.keys(convs).forEach(function (k) { total += convs[k].unread; });
+      if (this.dmLauncherBadge) {
+        this.dmLauncherBadge.classList.toggle('cs-vis', total > 0);
+      }
     },
 
     // ── DM ────────────────────────────────────────────────────────────────────
@@ -1631,6 +1746,7 @@
       } else {
         this.dmUnreadBadge.classList.remove('cs-vis');
       }
+      this._updateDMLauncherBadge();
     },
 
     // ── Public API ────────────────────────────────────────────────────────────
@@ -1638,6 +1754,7 @@
     setTitle: function (t) {
       this.title = t;
       this.titleEl.textContent = t;
+      if (this.btnTitleEl) this.btnTitleEl.textContent = t;
     },
 
     setNotice: function (t) {

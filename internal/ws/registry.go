@@ -60,14 +60,27 @@ func (ur *UserRegistry) Send(userID uint64, payload []byte) bool {
 
 // HubRegistry manages per-channel Hub goroutines with lazy creation.
 type HubRegistry struct {
-	hubs    sync.Map // slug → *Hub
-	db      *gorm.DB
-	rdb     *redis.Client
-	userReg *UserRegistry
+	hubs       sync.Map // slug → *Hub
+	db         *gorm.DB
+	rdb        *redis.Client
+	userReg    *UserRegistry
+	tgNotifier TelegramNotifier
 }
 
 func NewHubRegistry(db *gorm.DB, rdb *redis.Client, userReg *UserRegistry) *HubRegistry {
 	return &HubRegistry{db: db, rdb: rdb, userReg: userReg}
+}
+
+// SetTelegramNotifier wires a Telegram notifier into all hubs created hereafter.
+func (r *HubRegistry) SetTelegramNotifier(tn TelegramNotifier) {
+	r.tgNotifier = tn
+}
+
+// IsOnline returns true if userID has at least one active WebSocket connection.
+func (ur *UserRegistry) IsOnline(userID uint64) bool {
+	ur.mu.RLock()
+	defer ur.mu.RUnlock()
+	return len(ur.clients[userID]) > 0
 }
 
 // GetOrCreate returns the Hub for the given channel, creating and starting one if needed.
@@ -76,7 +89,7 @@ func (r *HubRegistry) GetOrCreate(slug string, channelID uint64) *Hub {
 	if v, ok := r.hubs.Load(slug); ok {
 		return v.(*Hub)
 	}
-	hub := newHub(slug, channelID, r.db, r.rdb, r.userReg)
+	hub := newHub(slug, channelID, r.db, r.rdb, r.userReg, r.tgNotifier)
 	if actual, loaded := r.hubs.LoadOrStore(slug, hub); loaded {
 		return actual.(*Hub)
 	}

@@ -16,6 +16,7 @@ type Config struct {
 	Cache    CacheConfig    `yaml:"cache"`
 	Chat     ChatConfig     `yaml:"chat"`
 	Admin    AdminConfig    `yaml:"admin"`
+	Telegram TelegramConfig `yaml:"telegram"`
 }
 
 type ServerConfig struct {
@@ -58,6 +59,11 @@ type ChatConfig struct {
 
 type AdminConfig struct {
 	Path string `yaml:"path"`
+}
+
+type TelegramConfig struct {
+	BotToken string `yaml:"bot_token"`
+	BotName  string `yaml:"bot_name"`
 }
 
 // IsInstalled returns true when config.yaml already exists.
@@ -216,6 +222,16 @@ chat:
 admin:
   # URL path prefix for the admin panel
   path: %q
+
+# ────────────────────────────────────────────────────────────
+# Telegram Bot (optional — leave bot_token empty to disable)
+# ────────────────────────────────────────────────────────────
+telegram:
+  # Bot token from @BotFather. Leave empty to disable Telegram features.
+  bot_token: %q
+
+  # Bot username without the @ prefix, e.g. "ChatSphereBot"
+  bot_name: %q
 `,
 		time.Now().Format("2006-01-02 15:04:05"),
 		cfg.Server.Host,
@@ -245,5 +261,7 @@ admin:
 		cfg.Chat.RateLimit,
 		cfg.Chat.AllowAnonymous,
 		cfg.Admin.Path,
+		cfg.Telegram.BotToken,
+		cfg.Telegram.BotName,
 	)
 }
