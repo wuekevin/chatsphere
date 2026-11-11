@@ -129,7 +129,7 @@ textarea{resize:vertical;min-height:80px}
 <body>
 
 <!-- Sidebar -->
-<aside id="sidebar">
+<aside id="sidebar" style="display:none">
   <div class="logo">
     <div class="logo-icon">
       <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
@@ -271,12 +271,14 @@ async function doLogin() {
 function logout() {
   state.token = null; state.user = null
   localStorage.removeItem('cs_admin_token')
+  document.getElementById('sidebar').style.display = 'none'
   document.getElementById('app-shell').style.display = 'none'
   document.getElementById('login-screen').style.display = 'flex'
 }
 
 function showApp() {
   document.getElementById('login-screen').style.display = 'none'
+  document.getElementById('sidebar').style.display = 'flex'
   document.getElementById('app-shell').style.display = 'flex'
   if (state.user) {
     document.getElementById('sidebar-name').textContent = state.user.username
