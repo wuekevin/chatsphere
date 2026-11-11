@@ -207,7 +207,8 @@
       '  background:var(--accent);color:#fff;',
       '  border-radius:16px 16px 4px 16px;',
       '}',
-      '[data-cs="msg-actions"]{display:flex;gap:8px;margin-top:3px;opacity:0;transition:opacity .15s}',
+      '[data-cs="bubble-row"]{display:flex;align-items:center;gap:6px}',
+      '[data-cs="msg-actions"]{display:flex;gap:6px;opacity:0;transition:opacity .15s;flex-shrink:0}',
       '[data-cs="msg"]:hover [data-cs="msg-actions"]{opacity:1}',
       '[data-cs="report-btn"],[data-cs="dm-msg-btn"]{font-size:10px;color:var(--muted);cursor:pointer;background:none;border:none;padding:0}',
       '[data-cs="report-btn"]:hover{color:var(--err)}',
@@ -1017,10 +1018,9 @@
       var bubble = cs('bubble');
       bubble.innerHTML = renderContent(msg.content);
 
-      // Report button (not shown for own messages)
-      var msgWrap = cs('msg-wrap');
-      msgWrap.appendChild(metaEl);
-      msgWrap.appendChild(bubble);
+      // Bubble row: bubble + inline action buttons (report / DM)
+      var bubbleRow = h('div', { 'data-cs': 'bubble-row' });
+      bubbleRow.appendChild(bubble);
       if (!mine) {
         var self = this;
         var actionsEl = h('div', { 'data-cs': 'msg-actions' });
@@ -1034,8 +1034,11 @@
           dmMsgBtn.addEventListener('click', function () { self._openDMConv(_uid, _uname, _ucolor); });
           actionsEl.appendChild(dmMsgBtn);
         }
-        msgWrap.appendChild(actionsEl);
+        bubbleRow.appendChild(actionsEl);
       }
+      var msgWrap = cs('msg-wrap');
+      msgWrap.appendChild(metaEl);
+      msgWrap.appendChild(bubbleRow);
 
       // Wrapper row
       var wrapper = cs('msg');
