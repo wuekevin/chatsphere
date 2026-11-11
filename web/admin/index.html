@@ -703,9 +703,11 @@ async function renderWidget() {
   const content = document.getElementById('content');
   content.innerHTML = '<div style="padding:40px;text-align:center;color:#6b7280">加载中…</div>';
   let cfg = {server_url:'',channel:'general',position:'bottom-right',offset:20,title:'',notice:'',accent_color:'',lang:'zh'};
+  let channels = [];
   try {
-    const r = await api('/embed-config');
-    if (r.config) cfg = r.config;
+    const [cr, chR] = await Promise.all([api.get('/embed-config'), fetch('/api/channels').then(r=>r.json())]);
+    if (cr && cr.config) cfg = cr.config;
+    if (chR && chR.channels) channels = chR.channels;
   } catch(_) {}
 
   const positions = ['bottom-right','bottom-left','top-right','top-left'];
@@ -721,8 +723,10 @@ async function renderWidget() {
         <div style="font-size:11px;color:#6b7280;margin-top:3px">留空则自动使用当前域名</div>
       </div>
       <div class="form-group" style="margin-top:12px">
-        <label class="label" style="font-size:13px;font-weight:600;margin-bottom:4px;display:block">默认频道 Slug</label>
-        <input id="ec-channel" class="input" placeholder="general" value="${esc(cfg.channel)}" style="width:100%">
+        <label class="label" style="font-size:13px;font-weight:600;margin-bottom:4px;display:block">默认频道</label>
+        <select id="ec-channel" class="input" style="width:100%">
+          ${channels.length ? channels.map(ch=>`<option value="${esc(ch.slug)}"${cfg.channel===ch.slug?' selected':''}>${esc(ch.name)} (${esc(ch.slug)})</option>`).join('') : `<option value="${esc(cfg.channel)}">${esc(cfg.channel)}</option>`}
+        </select>
       </div>
       <div style="display:flex;gap:12px;margin-top:12px;flex-wrap:wrap">
         <div style="flex:1;min-width:140px">
@@ -800,8 +804,8 @@ async function saveEmbedConfig() {
     lang: document.getElementById('ec-lang').value,
   };
   try {
-    const r = await api('/embed-config','PUT',body);
-    if (r.config) {
+    const r = await api.put('/embed-config', body);
+    if (r && r.config) {
       const el = document.getElementById('embed-oneliner');
       if (el) el.innerHTML = buildOneliner(r.config);
       showToast('配置已保存');
