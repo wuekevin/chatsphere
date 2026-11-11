@@ -11,7 +11,7 @@ type EmbedConfig struct {
 	Position    string    `gorm:"size:20;default:'bottom-right'" json:"position"`
 	Offset      int       `gorm:"default:20" json:"offset"`
 	Title       string    `gorm:"size:200;default:''" json:"title"`
-	Notice      string    `gorm:"type:text;default:''" json:"notice"`
+	Notice      string    `gorm:"type:text" json:"notice"`
 	AccentColor string    `gorm:"size:7;default:''" json:"accent_color"`
 	Lang        string    `gorm:"size:5;default:'zh'" json:"lang"`
 	UpdatedAt   time.Time `json:"updated_at"`
