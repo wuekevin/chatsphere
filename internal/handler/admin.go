@@ -77,13 +77,20 @@ func RegisterWidget(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	r.GET(cfg.Admin.Path, serveAdmin)
 	r.GET(cfg.Admin.Path+"/", serveAdmin)
 
-	// Dynamic widget JS (minified + config-baked). Must register before StaticFS
-	// so this exact route takes priority over the static file handler.
-	r.GET("/widget/chatsphere.js", serveWidgetJS(db))
-
-	// Widget assets — embedded in binary so the production binary is self-contained.
+	// Widget assets: serve via a single wildcard handler so gin's radix tree has
+	// no conflict between the dynamic chatsphere.js route and StaticFS's wildcard.
 	widgetSub, _ := fs.Sub(web.WidgetFS, "widget")
-	r.StaticFS("/widget", http.FS(widgetSub))
+	widgetFileServer := http.FileServer(http.FS(widgetSub))
+	serveJS := serveWidgetJS(db)
+	r.GET("/widget/*filepath", func(c *gin.Context) {
+		if c.Param("filepath") == "/chatsphere.js" {
+			serveJS(c)
+			return
+		}
+		// Strip the "/widget" prefix so the file server resolves relative to widgetSub.
+		c.Request.URL.Path = c.Param("filepath")
+		widgetFileServer.ServeHTTP(c.Writer, c.Request)
+	})
 }
 
 // --- Stats ---
