@@ -51,8 +51,10 @@
       /* Focus ring for all interactive elements */
       '[data-cs="root"] *:focus-visible{outline:2px solid var(--accent);outline-offset:2px}',
       /* Position variants */
-      '[data-cs="root"][data-pos="bottom-right"]{bottom:20px;right:20px}',
-      '[data-cs="root"][data-pos="bottom-left"]{bottom:20px;left:20px}',
+      '[data-cs="root"][data-pos="bottom-right"]{bottom:var(--offset,20px);right:var(--offset,20px)}',
+      '[data-cs="root"][data-pos="bottom-left"]{bottom:var(--offset,20px);left:var(--offset,20px)}',
+      '[data-cs="root"][data-pos="top-right"]{top:var(--offset,20px);right:var(--offset,20px)}',
+      '[data-cs="root"][data-pos="top-left"]{top:var(--offset,20px);left:var(--offset,20px)}',
 
       /* ── Button ── */
       '@keyframes cs-pop{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}',
@@ -85,6 +87,10 @@
       '  transition:transform 320ms cubic-bezier(.4,0,.2,1),opacity 320ms cubic-bezier(.4,0,.2,1);',
       '}',
       '[data-cs="root"][data-pos="bottom-left"] [data-cs="panel"]{transform-origin:bottom left}',
+      '[data-cs="root"][data-pos="top-right"] [data-cs="panel"]{bottom:auto;top:calc(var(--btn)+14px);transform-origin:top right}',
+      '[data-cs="root"][data-pos="top-left"] [data-cs="panel"]{bottom:auto;top:calc(var(--btn)+14px);transform-origin:top left}',
+      '[data-cs="root"][data-pos="top-right"] [data-cs="panel"]:not(.cs-open){transform:translateY(-20px)}',
+      '[data-cs="root"][data-pos="top-left"] [data-cs="panel"]:not(.cs-open){transform:translateY(-20px)}',
       '[data-cs="panel"].cs-open{transform:translateY(0);opacity:1;pointer-events:all}',
 
       /* ── Status bar (yellow pulse — shown when disconnected/reconnecting) ── */
@@ -364,6 +370,8 @@
       '@media(max-width:420px){',
       '  [data-cs="root"][data-pos="bottom-right"],',
       '  [data-cs="root"][data-pos="bottom-left"]{bottom:0;right:0;left:0}',
+      '  [data-cs="root"][data-pos="top-right"],',
+      '  [data-cs="root"][data-pos="top-left"]{top:0;right:0;left:0}',
       '  [data-cs="panel"]{',
       '    width:100vw;max-height:75vh;',
       '    border-radius:var(--radius) var(--radius) 0 0;',
@@ -445,6 +453,8 @@
     this.title       = opts.title    || 'Chat';
     this.notice      = opts.notice   || '';
     this.telegramURL = opts.telegram || '';
+    this.accent      = opts.accent   || '';
+    this.offset      = Math.min(80, Math.max(8, parseInt(opts.offset, 10) || 20));
 
     this.ws          = null;
     this.isOpen      = false;
@@ -485,6 +495,14 @@
       var self = this;
 
       var root = this.root = h('div', { 'data-cs': 'root', 'data-pos': this.position });
+      root.style.setProperty('--offset', this.offset + 'px');
+      if (this.accent && /^#[0-9a-fA-F]{6}$/.test(this.accent)) {
+        var ah = this.accent;
+        var ar = parseInt(ah.slice(1,3),16), ag = parseInt(ah.slice(3,5),16), ab2 = parseInt(ah.slice(5,7),16);
+        root.style.setProperty('--accent', ah);
+        root.style.setProperty('--accent-dim', 'rgba('+ar+','+ag+','+ab2+',.15)');
+        root.style.setProperty('--accent-glow', 'rgba('+ar+','+ag+','+ab2+',.35)');
+      }
 
       // ── Trigger button
       var btn = this.btn = h('button', {
@@ -1488,6 +1506,8 @@
         title:    d.title    || 'Chat',
         notice:   d.notice   || '',
         telegram: d.telegram || '',
+        accent:   d.accent   || '',
+        offset:   d.offset   || '',
       });
     };
     if (document.readyState === 'loading') {

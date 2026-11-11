@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ChatSphere Admin</title>
+<title>ChatSphere 管理后台</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -14,7 +14,6 @@
 }
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex}
 
-/* Sidebar */
 #sidebar{width:220px;min-height:100vh;background:var(--sidebar);display:flex;flex-direction:column;flex-shrink:0;position:sticky;top:0;height:100vh;overflow-y:auto}
 .logo{display:flex;align-items:center;gap:10px;padding:20px 16px;border-bottom:1px solid rgba(255,255,255,.08)}
 .logo-icon{width:34px;height:34px;background:var(--g);border-radius:8px;display:flex;align-items:center;justify-content:center}
@@ -35,7 +34,6 @@ nav{padding:12px 8px;flex:1}
 .logout-btn{background:none;border:none;color:#6b7280;cursor:pointer;font-size:11px;margin-top:8px;width:100%;text-align:center;transition:color .15s}
 .logout-btn:hover{color:#ef4444}
 
-/* Main */
 #main{flex:1;overflow:hidden;display:flex;flex-direction:column}
 .topbar{background:var(--white);border-bottom:1px solid var(--border);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .topbar-title{font-size:17px;font-weight:700}
@@ -48,7 +46,6 @@ nav{padding:12px 8px;flex:1}
 .btn-xs{padding:3px 8px;font-size:11px}
 .content{flex:1;overflow-y:auto;padding:24px}
 
-/* Stat cards */
 .stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:16px;margin-bottom:24px}
 .stat-card{background:var(--white);border-radius:12px;padding:20px;border:1px solid var(--border)}
 .stat-card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
@@ -61,7 +58,6 @@ nav{padding:12px 8px;flex:1}
 .stat-num{font-size:28px;font-weight:800;line-height:1}
 .stat-label{font-size:12px;color:var(--muted);margin-top:4px}
 
-/* Table */
 .table-wrap{background:var(--white);border-radius:12px;border:1px solid var(--border);overflow:hidden}
 .table-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px}
 .table-header h3{font-size:15px;font-weight:700}
@@ -85,7 +81,6 @@ tr:hover td{background:#fafafa}
 .u-email{font-size:11px;color:var(--muted)}
 .actions-cell{display:flex;gap:6px;flex-wrap:wrap}
 
-/* Forms / Modals */
 .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:999;padding:16px}
 .modal{background:var(--white);border-radius:16px;padding:28px;width:100%;max-width:480px;box-shadow:0 20px 60px rgba(0,0,0,.15)}
 .modal h3{font-size:17px;font-weight:700;margin-bottom:16px}
@@ -104,13 +99,11 @@ textarea{resize:vertical;min-height:80px}
 .toggle input:checked+.slider::before{transform:translateX(17px)}
 .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:20px}
 
-/* Pagination */
 .pagination{display:flex;align-items:center;justify-content:center;gap:4px;margin-top:16px}
 .page-btn{width:32px;height:32px;border-radius:6px;border:1.5px solid var(--border);background:var(--white);cursor:pointer;font-size:13px;font-weight:500;transition:all .15s;display:flex;align-items:center;justify-content:center}
 .page-btn.active{background:var(--g);border-color:var(--g);color:white}
 .page-btn:hover:not(.active){border-color:var(--g);color:var(--g)}
 
-/* Misc */
 .empty-state{text-align:center;padding:48px 24px;color:var(--muted)}
 .empty-state svg{width:40px;height:40px;fill:var(--border);margin-bottom:12px}
 .empty-state p{font-size:14px}
@@ -124,39 +117,171 @@ textarea{resize:vertical;min-height:80px}
 .notice{padding:12px 16px;border-radius:8px;font-size:13px;margin-bottom:16px}
 .notice-info{background:#eff6ff;color:#1e40af;border:1px solid #bfdbfe}
 .notice-warn{background:#fffbeb;color:#78350f;border:1px solid #fde68a}
+
+.wgt-cfg{background:var(--white);border-radius:12px;border:1px solid var(--border);padding:20px;margin-bottom:20px}
+.wgt-cfg h3{font-size:15px;font-weight:700;margin-bottom:16px}
+.pos-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;max-width:280px}
+.pos-btn{padding:10px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;font-size:12px;font-weight:500;text-align:center;transition:all .15s;background:var(--white)}
+.pos-btn:hover{border-color:var(--g);color:var(--g)}
+.pos-btn.active{border-color:var(--g);background:var(--gl);color:#15803d;font-weight:700}
+.lang-btn{padding:4px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;background:var(--white);color:var(--muted);transition:all .15s}
+.lang-btn:hover{border-color:var(--g);color:var(--g)}
 </style>
 </head>
 <body>
 
-<!-- Login screen — only element in body before authentication -->
 <div id="login-screen" style="flex:1;display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg)">
   <div style="background:white;border-radius:16px;padding:36px;width:380px;box-shadow:0 4px 24px rgba(0,0,0,.08)">
     <div style="text-align:center;margin-bottom:28px">
       <div style="width:52px;height:52px;background:#22c55e;border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 12px">
         <svg width="30" height="30" viewBox="0 0 24 24" fill="white"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
       </div>
-      <h2 style="font-size:20px;font-weight:800">ChatSphere Admin</h2>
-      <p style="font-size:13px;color:#6b7280;margin-top:4px">Sign in to manage your instance</p>
+      <h2 style="font-size:20px;font-weight:800">ChatSphere</h2>
+      <p id="l-subtitle" style="font-size:13px;color:#6b7280;margin-top:4px"></p>
     </div>
     <div class="form-group">
-      <label>Username</label>
+      <label id="l-label-user"></label>
       <input id="l-user" type="text" placeholder="admin" autocomplete="username">
     </div>
     <div class="form-group">
-      <label>Password</label>
+      <label id="l-label-pass"></label>
       <input id="l-pass" type="password" placeholder="••••••••" autocomplete="current-password">
     </div>
     <div id="l-err" style="color:#ef4444;font-size:12px;margin:-8px 0 12px;min-height:16px"></div>
-    <button class="btn btn-primary" style="width:100%;padding:11px" onclick="doLogin()">Sign In</button>
+    <button id="l-btn" class="btn btn-primary" style="width:100%;padding:11px" onclick="doLogin()"></button>
   </div>
 </div>
 
-<!-- Modal container -->
 <div id="modal-container"></div>
 
 <script>
+// ── i18n ──────────────────────────────────────────────────────────────────────
+const L = {
+  zh: {
+    app_title:'ChatSphere 管理后台', login_subtitle:'登录以管理您的实例',
+    username:'用户名', password:'密码', sign_in:'登录', sign_out:'退出登录',
+    connecting_error:'连接错误，请重试', invalid_creds:'账号或密码错误，或权限不足',
+    super_admin:'超级管理员',
+    overview:'概览', dashboard:'仪表盘', content:'内容管理',
+    channels:'频道', messages:'消息', reports:'举报',
+    safety:'安全', moderation:'敏感词管理',
+    people:'用户', users:'用户管理', configure:'配置',
+    widget_embed:'嵌入设置',
+    reg_users:'注册用户', total_msgs:'消息总数', active_channels:'活跃频道', pending_reports:'待处理举报',
+    quick_start:'快速开始', quick_start_msg:'在您的网页中加入以下代码（放在 &lt;/body&gt; 前）即可嵌入聊天组件。前往',
+    quick_start_link:'嵌入设置', quick_start_msg2:'查看嵌入代码。',
+    new_channel:'+ 新建频道', name:'名称', description:'描述', status:'状态',
+    default:'默认', anonymous:'允许匿名', actions:'操作',
+    active:'活跃', inactive:'未启用', yes:'是', no:'否',
+    edit:'编辑', remove:'移除', new_channel_title:'新建频道', edit_channel_title:'编辑频道',
+    slug:'标识符', telegram_url:'Telegram 链接', max_msg_len:'最大消息长度',
+    rate_limit:'发送限速（秒）', accent_color:'主题色',
+    allow_active:'启用频道', allow_default:'设为默认频道', allow_anon:'允许匿名',
+    cancel:'取消', save:'保存',
+    search_msg:'搜索消息…', user:'用户', message:'消息', channel:'频道', time:'时间', action:'操作',
+    anon:'匿名', delete_btn:'删除',
+    role:'角色', reputation:'声望', joined:'注册时间', ban:'封禁', unban:'解封', rep:'声望值',
+    pending:'待处理', resolved:'已处理', dismissed:'已忽略',
+    report_id:'ID', msg_id:'消息ID', reason:'原因', reported:'举报时间',
+    resolve:'处理', dismiss:'忽略',
+    pattern:'规则模式', type:'类型', scope:'范围', added:'添加时间',
+    add_rule:'+ 添加规则', bw_info:'敏感词在每条消息发送时检查。<strong>全局规则</strong>适用于所有频道；频道规则只适用于该频道。缓存每5分钟刷新。',
+    global:'全局', literal:'精确匹配', regex:'正则',
+    add_bw_title:'添加敏感词', bw_pattern:'匹配模式', bw_scope:'范围',
+    bw_global:'全局（所有频道）', bw_regex_label:'正则表达式',
+    bw_hint:'精确匹配：不区分大小写。正则：Go regexp 语法。', add:'添加规则',
+    set_rep_title:'设置声望值', rep_score:'声望分数',
+    deactivate_confirm:'确认停用该频道？', delete_msg_confirm:'确认删除该消息？',
+    ban_confirm:'确认封禁该用户？', remove_rule_confirm:'确认删除该规则？',
+    no_channels:'暂无频道', no_messages:'未找到消息', no_users:'暂无用户',
+    no_reports:'该分类下暂无举报', no_blocked_words:'暂无敏感词规则',
+    loading:'加载中…',
+    wgt_customize:'自定义配置', wgt_position:'位置',
+    wgt_accent:'主题色', wgt_chat_title:'聊天标题', wgt_notice:'公告文字',
+    wgt_title_placeholder:'聊天', wgt_notice_placeholder:'欢迎来到聊天室',
+    wgt_pos_br:'右下角', wgt_pos_bl:'左下角', wgt_pos_tr:'右上角', wgt_pos_tl:'左上角',
+    wgt_offset:'位距（px）', wgt_offset_hint:'距边缘像素数（8-80）',
+    wgt_auto:'脚本标签嵌入（最简单）', wgt_manual:'手动初始化（更灵活）',
+    wgt_preview:'实时预览', wgt_preview_desc:'该组件已在本页激活，可在对应位置找到聊天按钮。',
+    copy:'复制', copied:'已复制！',
+  },
+  en: {
+    app_title:'ChatSphere Admin', login_subtitle:'Sign in to manage your instance',
+    username:'Username', password:'Password', sign_in:'Sign In', sign_out:'Sign Out',
+    connecting_error:'Connection error, please retry', invalid_creds:'Invalid credentials or insufficient permission',
+    super_admin:'Super Admin',
+    overview:'Overview', dashboard:'Dashboard', content:'Content',
+    channels:'Channels', messages:'Messages', reports:'Reports',
+    safety:'Safety', moderation:'Moderation',
+    people:'People', users:'Users', configure:'Configure',
+    widget_embed:'Widget & Embed',
+    reg_users:'Registered Users', total_msgs:'Total Messages', active_channels:'Active Channels', pending_reports:'Pending Reports',
+    quick_start:'Quick Start', quick_start_msg:'Copy one of the snippets below and paste into your webpage before &lt;/body&gt;. Go to',
+    quick_start_link:'Widget & Embed', quick_start_msg2:'to get the embed code.',
+    new_channel:'+ New Channel', name:'Name', description:'Description', status:'Status',
+    default:'Default', anonymous:'Anonymous', actions:'Actions',
+    active:'Active', inactive:'Inactive', yes:'Yes', no:'No',
+    edit:'Edit', remove:'Remove', new_channel_title:'New Channel', edit_channel_title:'Edit Channel',
+    slug:'Slug', telegram_url:'Telegram URL', max_msg_len:'Max Msg Length',
+    rate_limit:'Rate Limit (s)', accent_color:'Accent Color',
+    allow_active:'Active', allow_default:'Default Channel', allow_anon:'Allow Anonymous',
+    cancel:'Cancel', save:'Save',
+    search_msg:'Search messages…', user:'User', message:'Message', channel:'Channel', time:'Time', action:'Action',
+    anon:'Anonymous', delete_btn:'Delete',
+    role:'Role', reputation:'Reputation', joined:'Joined', ban:'Ban', unban:'Unban', rep:'Rep',
+    pending:'Pending', resolved:'Resolved', dismissed:'Dismissed',
+    report_id:'ID', msg_id:'Msg ID', reason:'Reason', reported:'Reported',
+    resolve:'Resolve', dismiss:'Dismiss',
+    pattern:'Pattern', type:'Type', scope:'Scope', added:'Added',
+    add_rule:'+ Add Rule', bw_info:'Blocked words are checked on every message. <strong>Global rules</strong> apply to all channels; channel-specific rules apply only to that channel. Cache refreshes every 5 minutes.',
+    global:'Global', literal:'Literal', regex:'Regex',
+    add_bw_title:'Add Blocked Word', bw_pattern:'Pattern', bw_scope:'Scope',
+    bw_global:'Global (all channels)', bw_regex_label:'Regex pattern',
+    bw_hint:'Literal: case-insensitive substring match. Regex: full Go regexp syntax.', add:'Add Rule',
+    set_rep_title:'Set Reputation', rep_score:'Reputation Score',
+    deactivate_confirm:'Deactivate this channel?', delete_msg_confirm:'Delete this message?',
+    ban_confirm:'Ban this user?', remove_rule_confirm:'Remove this rule?',
+    no_channels:'No channels yet', no_messages:'No messages found', no_users:'No users yet',
+    no_reports:'No reports in this category', no_blocked_words:'No blocked words configured',
+    loading:'Loading…',
+    wgt_customize:'Customize', wgt_position:'Position',
+    wgt_accent:'Accent Color', wgt_chat_title:'Chat Title', wgt_notice:'Notice Text',
+    wgt_title_placeholder:'Chat', wgt_notice_placeholder:'Welcome to chat',
+    wgt_pos_br:'Bottom Right', wgt_pos_bl:'Bottom Left', wgt_pos_tr:'Top Right', wgt_pos_tl:'Top Left',
+    wgt_offset:'Offset (px)', wgt_offset_hint:'Distance from edge in pixels (8-80)',
+    wgt_auto:'Script tag (simplest)', wgt_manual:'Manual init (more control)',
+    wgt_preview:'Live Preview', wgt_preview_desc:'The widget is active on this page. Look for the chat button.',
+    copy:'Copy', copied:'Copied!',
+  }
+}
+let lang = localStorage.getItem('cs_lang') || 'zh'
+function t(k) { return (L[lang]||L.zh)[k] || k }
+function switchLang() {
+  lang = lang === 'zh' ? 'en' : 'zh'
+  localStorage.setItem('cs_lang', lang)
+  applyLang()
+}
+function applyLang() {
+  document.documentElement.lang = lang === 'zh' ? 'zh' : 'en'
+  document.title = t('app_title')
+  const ls = document.getElementById('login-screen')
+  if (ls && ls.style.display !== 'none') {
+    document.getElementById('l-subtitle').textContent = t('login_subtitle')
+    document.getElementById('l-label-user').textContent = t('username')
+    document.getElementById('l-label-pass').textContent = t('password')
+    document.getElementById('l-btn').textContent = t('sign_in')
+  }
+  const lb = document.getElementById('lang-toggle')
+  if (lb) lb.textContent = lang === 'zh' ? 'EN' : '中'
+  document.querySelectorAll('[data-k]').forEach(el => { el.textContent = t(el.getAttribute('data-k')) })
+  if (state.token && state.currentPage) show(state.currentPage)
+}
+
 // ── State ─────────────────────────────────────────────────────────────────────
-const state = { token: null, user: null, channels: [], currentPage: 'dashboard', statsTimer: null }
+const state = {
+  token: null, user: null, channels: [], currentPage: 'dashboard', statsTimer: null,
+  widgetCfg: { position: 'bottom-right', accent: '', title: '', notice: '', offset: 20 }
+}
 
 // ── API ───────────────────────────────────────────────────────────────────────
 const api = {
@@ -165,9 +290,12 @@ const api = {
     const opts = { method, headers: { 'Content-Type': 'application/json' } }
     if (state.token) opts.headers['Authorization'] = 'Bearer ' + state.token
     if (body) opts.body = JSON.stringify(body)
-    const r = await fetch(this.base + path, opts)
-    if (r.status === 401) { logout(); return null }
-    return r.json()
+    try {
+      const r = await fetch(this.base + path, opts)
+      if (r.status === 401) { logout(); return null }
+      if (!r.ok) return null
+      return r.json()
+    } catch(e) { return null }
   },
   get(p)    { return this.req('GET', p) },
   post(p,b) { return this.req('POST', p, b) },
@@ -187,14 +315,14 @@ async function doLogin() {
     })
     const d = await r.json()
     if (!d.token || d.user?.role !== 'admin') {
-      document.getElementById('l-err').textContent = 'Invalid credentials or insufficient permission.'
+      document.getElementById('l-err').textContent = t('invalid_creds')
       return
     }
     state.token = d.token; state.user = d.user
     localStorage.setItem('cs_admin_token', d.token)
     showApp()
   } catch(e) {
-    document.getElementById('l-err').textContent = 'Connection error.'
+    document.getElementById('l-err').textContent = t('connecting_error')
   }
 }
 
@@ -207,12 +335,12 @@ function logout() {
   if (sidebar) sidebar.remove()
   if (appShell) appShell.remove()
   document.getElementById('login-screen').style.display = 'flex'
+  applyLang()
 }
 
 function showApp() {
   document.getElementById('login-screen').style.display = 'none'
 
-  // Build sidebar and inject into DOM (only exists after login)
   const aside = document.createElement('aside')
   aside.id = 'sidebar'
   aside.innerHTML = `
@@ -221,36 +349,38 @@ function showApp() {
       <div><div class="logo-name">ChatSphere</div><div class="logo-ver">v1.0</div></div>
     </div>
     <nav>
-      <div class="nav-section">Overview</div>
-      <a class="nav-item active" onclick="show('dashboard')"><svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>Dashboard</a>
-      <div class="nav-section">Content</div>
-      <a class="nav-item" onclick="show('channels')"><svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 10H6v-2h12v2zm0-3H6V7h12v2z"/></svg>Channels</a>
-      <a class="nav-item" onclick="show('messages')"><svg viewBox="0 0 24 24"><path d="M21.99 4c0-1.1-.89-2-1.99-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4-.01-18z"/></svg>Messages</a>
-      <a class="nav-item" onclick="show('reports')"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>Reports<span id="report-badge" style="margin-left:auto;background:#ef4444;color:white;font-size:10px;padding:1px 6px;border-radius:9px;display:none"></span></a>
-      <div class="nav-section">Safety</div>
-      <a class="nav-item" onclick="show('moderation')"><svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-1 14l-3-3 1.41-1.41L11 12.17l4.59-4.58L17 9l-6 6z"/></svg>Moderation</a>
-      <div class="nav-section">People</div>
-      <a class="nav-item" onclick="show('users')"><svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>Users</a>
-      <div class="nav-section">Configure</div>
-      <a class="nav-item" onclick="show('widget')"><svg viewBox="0 0 24 24"><path d="M20.5 11H19V7c0-1.1-.9-2-2-2h-4V3.5C13 2.12 11.88 1 10.5 1S8 2.12 8 3.5V5H4c-1.1 0-1.99.9-1.99 2v3.8H3.5c1.49 0 2.7 1.21 2.7 2.7s-1.21 2.7-2.7 2.7H2V20c0 1.1.9 2 2 2h3.8v-1.5c0-1.49 1.21-2.7 2.7-2.7 1.49 0 2.7 1.21 2.7 2.7V22H17c1.1 0 2-.9 2-2v-4h1.5c1.38 0 2.5-1.12 2.5-2.5S21.88 11 20.5 11z"/></svg>Widget & Embed</a>
+      <div class="nav-section" data-k="overview"></div>
+      <a class="nav-item active" onclick="show('dashboard')"><svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg><span data-k="dashboard"></span></a>
+      <div class="nav-section" data-k="content"></div>
+      <a class="nav-item" onclick="show('channels')"><svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 10H6v-2h12v2zm0-3H6V7h12v2z"/></svg><span data-k="channels"></span></a>
+      <a class="nav-item" onclick="show('messages')"><svg viewBox="0 0 24 24"><path d="M21.99 4c0-1.1-.89-2-1.99-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4-.01-18z"/></svg><span data-k="messages"></span></a>
+      <a class="nav-item" onclick="show('reports')"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg><span data-k="reports"></span><span id="report-badge" style="margin-left:auto;background:#ef4444;color:white;font-size:10px;padding:1px 6px;border-radius:9px;display:none"></span></a>
+      <div class="nav-section" data-k="safety"></div>
+      <a class="nav-item" onclick="show('moderation')"><svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-1 14l-3-3 1.41-1.41L11 12.17l4.59-4.58L17 9l-6 6z"/></svg><span data-k="moderation"></span></a>
+      <div class="nav-section" data-k="people"></div>
+      <a class="nav-item" onclick="show('users')"><svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg><span data-k="users"></span></a>
+      <div class="nav-section" data-k="configure"></div>
+      <a class="nav-item" onclick="show('widget')"><svg viewBox="0 0 24 24"><path d="M20.5 11H19V7c0-1.1-.9-2-2-2h-4V3.5C13 2.12 11.88 1 10.5 1S8 2.12 8 3.5V5H4c-1.1 0-1.99.9-1.99 2v3.8H3.5c1.49 0 2.7 1.21 2.7 2.7s-1.21 2.7-2.7 2.7H2V20c0 1.1.9 2 2 2h3.8v-1.5c0-1.49 1.21-2.7 2.7-2.7 1.49 0 2.7 1.21 2.7 2.7V22H17c1.1 0 2-.9 2-2v-4h1.5c1.38 0 2.5-1.12 2.5-2.5S21.88 11 20.5 11z"/></svg><span data-k="widget_embed"></span></a>
     </nav>
     <div class="sidebar-footer">
       <div class="admin-pill">
         <div class="admin-avatar" id="sidebar-avatar">A</div>
-        <div><div class="admin-name" id="sidebar-name">Admin</div><div class="admin-role">Super Admin</div></div>
+        <div><div class="admin-name" id="sidebar-name">Admin</div><div class="admin-role" data-k="super_admin"></div></div>
       </div>
-      <button class="logout-btn" onclick="logout()">Sign Out</button>
+      <button class="logout-btn" onclick="logout()" data-k="sign_out"></button>
     </div>`
   document.body.insertBefore(aside, document.getElementById('modal-container'))
 
-  // Build app-shell and inject into DOM
   const shell = document.createElement('div')
   shell.id = 'app-shell'
   shell.style.cssText = 'flex:1;overflow:hidden;display:flex;flex-direction:column'
   shell.innerHTML = `
     <div class="topbar">
-      <div class="topbar-title" id="page-title">Dashboard</div>
-      <div class="topbar-right"><span id="topbar-domain" style="font-size:12px;color:#6b7280"></span></div>
+      <div class="topbar-title" id="page-title"></div>
+      <div class="topbar-right">
+        <span id="topbar-domain" style="font-size:12px;color:#6b7280"></span>
+        <button id="lang-toggle" class="lang-btn" onclick="switchLang()"></button>
+      </div>
     </div>
     <div class="content" id="content"></div>`
   document.body.insertBefore(shell, document.getElementById('modal-container'))
@@ -260,21 +390,25 @@ function showApp() {
     document.getElementById('sidebar-avatar').textContent = state.user.username[0].toUpperCase()
     document.getElementById('topbar-domain').textContent = window.location.hostname
   }
+  document.querySelectorAll('[data-k]').forEach(el => { el.textContent = t(el.getAttribute('data-k')) })
+  document.getElementById('lang-toggle').textContent = lang === 'zh' ? 'EN' : '中'
   show('dashboard')
   loadStats()
   if (state.statsTimer) clearInterval(state.statsTimer)
   state.statsTimer = setInterval(loadStats, 30000)
 }
 
-// Auto-login from localStorage
 window.addEventListener('DOMContentLoaded', async () => {
-  const t = localStorage.getItem('cs_admin_token')
-  if (t) {
-    state.token = t
+  applyLang()
+  const saved = localStorage.getItem('cs_admin_token')
+  if (saved) {
+    state.token = saved
     const d = await api.get('/stats')
     if (d) {
-      const me = await fetch('/api/auth/me', {headers:{'Authorization':'Bearer '+t}}).then(r=>r.json())
-      if (me?.user?.role === 'admin') { state.user = me.user; showApp(); return }
+      try {
+        const me = await fetch('/api/auth/me', {headers:{'Authorization':'Bearer '+saved}}).then(r=>r.json())
+        if (me?.user?.role === 'admin') { state.user = me.user; showApp(); return }
+      } catch(e) {}
     }
     localStorage.removeItem('cs_admin_token')
     state.token = null
@@ -291,17 +425,22 @@ function show(page) {
   const map = {dashboard:0,channels:1,messages:2,reports:3,moderation:4,users:5,widget:6}
   const items = document.querySelectorAll('.nav-item')
   if (items[map[page]] !== undefined) items[map[page]].classList.add('active')
-  const titles = {dashboard:'Dashboard',channels:'Channels',messages:'Messages',reports:'Reports',moderation:'Moderation',users:'Users',widget:'Widget & Embed'}
-  document.getElementById('page-title').textContent = titles[page] || page
+  const titleKeys = {dashboard:'dashboard',channels:'channels',messages:'messages',reports:'reports',moderation:'moderation',users:'users',widget:'widget_embed'}
+  document.getElementById('page-title').textContent = t(titleKeys[page] || page)
   const fns = {dashboard:renderDashboard,channels:renderChannels,messages:renderMessages,reports:renderReports,moderation:renderModeration,users:renderUsers,widget:renderWidget}
   if (fns[page]) fns[page]()
 }
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 let stats = {}
-async function loadStats() { stats = await api.get('/stats') || {}; if (state.currentPage==='dashboard') renderDashboard(); updateReportBadge() }
+async function loadStats() {
+  stats = await api.get('/stats') || {}
+  if (state.currentPage==='dashboard') renderDashboard()
+  updateReportBadge()
+}
 function updateReportBadge() {
   const b = document.getElementById('report-badge')
+  if (!b) return
   if (stats.pending_reports > 0) { b.textContent = stats.pending_reports; b.style.display = '' }
   else b.style.display = 'none'
 }
@@ -314,13 +453,13 @@ function statCard(icon, num, label, cls) {
 function renderDashboard() {
   document.getElementById('content').innerHTML = `
     <div class="stats-grid">
-      ${statCard('<svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>',stats.users,'Registered Users','g')}
-      ${statCard('<svg viewBox="0 0 24 24"><path d="M21.99 4c0-1.1-.89-2-1.99-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4-.01-18z"/></svg>',stats.messages,'Total Messages','b')}
-      ${statCard('<svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 10H6v-2h12v2zm0-3H6V7h12v2z"/></svg>',stats.channels,'Active Channels','o')}
-      ${statCard('<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>',stats.pending_reports,'Pending Reports','r')}
+      ${statCard('<svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>',stats.users,t('reg_users'),'g')}
+      ${statCard('<svg viewBox="0 0 24 24"><path d="M21.99 4c0-1.1-.89-2-1.99-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4-.01-18z"/></svg>',stats.messages,t('total_msgs'),'b')}
+      ${statCard('<svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 10H6v-2h12v2zm0-3H6V7h12v2z"/></svg>',stats.channels,t('active_channels'),'o')}
+      ${statCard('<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>',stats.pending_reports,t('pending_reports'),'r')}
     </div>
     <div class="notice notice-info">
-      <strong>Quick Start:</strong> Add the widget to any page by going to <a href="#" onclick="show('widget')" style="color:#1d4ed8;font-weight:600">Widget & Embed</a> and copying the embed code.
+      <strong>${t('quick_start')}：</strong>${t('quick_start_msg')} <a href="#" onclick="show('widget')" style="color:#1d4ed8;font-weight:600">${t('quick_start_link')}</a>${t('quick_start_msg2')}
     </div>`
 }
 
@@ -333,23 +472,23 @@ async function renderChannels() {
     <tr>
       <td><strong>${esc(c.name)}</strong><br><small style="color:#6b7280">#${esc(c.slug)}</small></td>
       <td>${esc(c.description||'-')}</td>
-      <td>${c.is_active?'<span class="badge badge-green">Active</span>':'<span class="badge badge-gray">Inactive</span>'}</td>
-      <td>${c.is_default?'<span class="badge badge-blue">Default</span>':'-'}</td>
-      <td>${c.allow_anonymous?'Yes':'No'}</td>
+      <td>${c.is_active?`<span class="badge badge-green">${t('active')}</span>`:`<span class="badge badge-gray">${t('inactive')}</span>`}</td>
+      <td>${c.is_default?`<span class="badge badge-blue">${t('default')}</span>`:'-'}</td>
+      <td>${c.allow_anonymous?t('yes'):t('no')}</td>
       <td class="actions-cell">
-        <button class="btn btn-outline btn-xs" onclick="editChannel(${c.id})">Edit</button>
-        <button class="btn btn-xs" style="background:#fee2e2;color:#991b1b" onclick="deleteChannel(${c.id})">Remove</button>
+        <button class="btn btn-outline btn-xs" onclick="editChannel(${c.id})">${t('edit')}</button>
+        <button class="btn btn-xs" style="background:#fee2e2;color:#991b1b" onclick="deleteChannel(${c.id})">${t('remove')}</button>
       </td>
     </tr>`).join('')
   document.getElementById('content').innerHTML = `
     <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
-      <button class="btn btn-primary" onclick="newChannel()">+ New Channel</button>
+      <button class="btn btn-primary" onclick="newChannel()">${t('new_channel')}</button>
     </div>
     <div class="table-wrap">
-      <div class="table-header"><h3>Channels</h3></div>
+      <div class="table-header"><h3>${t('channels')}</h3></div>
       <table>
-        <thead><tr><th>Name</th><th>Description</th><th>Status</th><th>Default</th><th>Anonymous</th><th>Actions</th></tr></thead>
-        <tbody>${rows||emptyRow(6,'No channels yet')}</tbody>
+        <thead><tr><th>${t('name')}</th><th>${t('description')}</th><th>${t('status')}</th><th>${t('default')}</th><th>${t('anonymous')}</th><th>${t('actions')}</th></tr></thead>
+        <tbody>${rows||emptyRow(6,t('no_channels'))}</tbody>
       </table>
     </div>`
 }
@@ -360,35 +499,34 @@ async function editChannel(id) {
   if (ch) openChannelModal(ch)
 }
 async function deleteChannel(id) {
-  if (!confirm('Deactivate this channel?')) return
-  await api.del('/channels/'+id)
-  renderChannels()
+  if (!confirm(t('deactivate_confirm'))) return
+  await api.del('/channels/'+id); renderChannels()
 }
 function openChannelModal(ch) {
   const isEdit = !!ch
-  modal(`<h3>${isEdit?'Edit':'New'} Channel</h3>
+  modal(`<h3>${isEdit?t('edit_channel_title'):t('new_channel_title')}</h3>
     <div class="form-row-2">
-      <div class="form-group"><label>Name</label><input id="m-name" value="${esc(ch?.name||'')}"></div>
-      <div class="form-group"><label>Slug</label><input id="m-slug" value="${esc(ch?.slug||'')}" ${isEdit?'':'oninput="autoSlug()"'}></div>
+      <div class="form-group"><label>${t('name')}</label><input id="m-name" value="${esc(ch?.name||'')}"></div>
+      <div class="form-group"><label>${t('slug')}</label><input id="m-slug" value="${esc(ch?.slug||'')}" ${isEdit?'':'oninput="autoSlug()"'}></div>
     </div>
-    <div class="form-group"><label>Description</label><textarea id="m-desc">${esc(ch?.description||'')}</textarea></div>
-    <div class="form-group"><label>Telegram URL</label><input id="m-tg" value="${esc(ch?.telegram_url||'')}"></div>
+    <div class="form-group"><label>${t('description')}</label><textarea id="m-desc">${esc(ch?.description||'')}</textarea></div>
+    <div class="form-group"><label>${t('telegram_url')}</label><input id="m-tg" value="${esc(ch?.telegram_url||'')}"></div>
     <div class="form-row-2">
-      <div class="form-group"><label>Max Msg Length</label><input id="m-maxlen" type="number" value="${ch?.max_msg_length||200}"></div>
-      <div class="form-group"><label>Rate Limit (s)</label><input id="m-rate" type="number" value="${ch?.rate_limit_seconds||3}"></div>
+      <div class="form-group"><label>${t('max_msg_len')}</label><input id="m-maxlen" type="number" value="${ch?.max_msg_length||200}"></div>
+      <div class="form-group"><label>${t('rate_limit')}</label><input id="m-rate" type="number" value="${ch?.rate_limit_seconds||3}"></div>
     </div>
-    <div class="form-group"><label>Accent Color <small style="color:#6b7280">(widget theme, e.g. #f5a623)</small></label>
+    <div class="form-group"><label>${t('accent_color')} <small style="color:#6b7280">(e.g. #f5a623)</small></label>
       <div style="display:flex;align-items:center;gap:8px">
         <input type="color" id="m-accent-pick" value="${ch?.accent_color||'#f5a623'}" style="width:40px;height:36px;padding:2px;border-radius:6px;cursor:pointer">
         <input id="m-accent" value="${esc(ch?.accent_color||'')}" placeholder="#f5a623" style="flex:1" oninput="syncColor(this.value)" maxlength="7">
       </div>
     </div>
-    <div class="toggle-row"><span>Active</span><label class="toggle"><input type="checkbox" id="m-active" ${ch?.is_active!==false?'checked':''}><span class="slider"></span></label></div>
-    <div class="toggle-row"><span>Default Channel</span><label class="toggle"><input type="checkbox" id="m-default" ${ch?.is_default?'checked':''}><span class="slider"></span></label></div>
-    <div class="toggle-row"><span>Allow Anonymous</span><label class="toggle"><input type="checkbox" id="m-anon" ${ch?.allow_anonymous!==false?'checked':''}><span class="slider"></span></label></div>
+    <div class="toggle-row"><span>${t('allow_active')}</span><label class="toggle"><input type="checkbox" id="m-active" ${ch?.is_active!==false?'checked':''}><span class="slider"></span></label></div>
+    <div class="toggle-row"><span>${t('allow_default')}</span><label class="toggle"><input type="checkbox" id="m-default" ${ch?.is_default?'checked':''}><span class="slider"></span></label></div>
+    <div class="toggle-row"><span>${t('allow_anon')}</span><label class="toggle"><input type="checkbox" id="m-anon" ${ch?.allow_anonymous!==false?'checked':''}><span class="slider"></span></label></div>
     <div class="modal-actions">
-      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveChannel(${ch?.id||0})">Save</button>
+      <button class="btn btn-outline" onclick="closeModal()">${t('cancel')}</button>
+      <button class="btn btn-primary" onclick="saveChannel(${ch?.id||0})">${t('save')}</button>
     </div>`)
   if (!isEdit) document.getElementById('m-name').addEventListener('input', autoSlug)
   const pick = document.getElementById('m-accent-pick')
@@ -415,8 +553,8 @@ async function saveChannel(id) {
     is_active: document.getElementById('m-active').checked,
     is_default: document.getElementById('m-default').checked,
     allow_anonymous: document.getElementById('m-anon').checked,
+    accent_color: v('m-accent'),
   }
-  body.accent_color = v('m-accent')
   if (id) await api.put('/channels/'+id, body)
   else await api.post('/channels', body)
   closeModal(); renderChannels()
@@ -428,14 +566,14 @@ async function renderMessages() {
   document.getElementById('content').innerHTML = `
     <div class="table-wrap">
       <div class="table-header">
-        <h3>Messages</h3>
+        <h3>${t('messages')}</h3>
         <div class="search-box">
           <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-          <input id="msg-q" placeholder="Search messages…" oninput="msgQ=this.value;msgPage=1;loadMessages()">
+          <input id="msg-q" placeholder="${t('search_msg')}" oninput="msgQ=this.value;msgPage=1;loadMessages()">
         </div>
       </div>
-      <table><thead><tr><th>User</th><th>Message</th><th>Channel</th><th>Time</th><th>Action</th></tr></thead>
-      <tbody id="msg-body">Loading…</tbody></table>
+      <table><thead><tr><th>${t('user')}</th><th>${t('message')}</th><th>${t('channel')}</th><th>${t('time')}</th><th>${t('action')}</th></tr></thead>
+      <tbody id="msg-body"><tr><td colspan="5" class="empty-state"><p>${t('loading')}</p></td></tr></tbody></table>
     </div>
     <div class="pagination" id="msg-pag"></div>`
   loadMessages()
@@ -446,16 +584,16 @@ async function loadMessages() {
   const msgs = data?.messages || []
   const rows = msgs.map(m => `<tr>
     <td><div class="user-cell"><div class="u-avatar" style="background:${m.avatar_color||'#6b7280'}">${(m.display_name||'?')[0].toUpperCase()}</div>
-    <div><div class="u-name">${esc(m.display_name)}</div><div class="u-email">${m.is_anonymous?'Anonymous':''}</div></div></div></td>
+    <div><div class="u-name">${esc(m.display_name)}</div><div class="u-email">${m.is_anonymous?t('anon'):''}</div></div></div></td>
     <td><div class="msg-content" title="${esc(m.content)}">${esc(m.content)}</div></td>
     <td><span class="tag">ch:${m.channel_id}</span></td>
     <td style="white-space:nowrap;font-size:12px;color:#6b7280">${new Date(m.created_at).toLocaleString()}</td>
-    <td><button class="btn btn-xs" style="background:#fee2e2;color:#991b1b" onclick="deleteMsg(${m.id})">Delete</button></td>
+    <td><button class="btn btn-xs" style="background:#fee2e2;color:#991b1b" onclick="deleteMsg(${m.id})">${t('delete_btn')}</button></td>
   </tr>`).join('')
-  document.getElementById('msg-body').innerHTML = rows || emptyRow(5,'No messages found')
+  document.getElementById('msg-body').innerHTML = rows || emptyRow(5,t('no_messages'))
 }
 async function deleteMsg(id) {
-  if (!confirm('Delete this message?')) return
+  if (!confirm(t('delete_msg_confirm'))) return
   await api.del('/messages/'+id); loadMessages()
 }
 
@@ -463,9 +601,9 @@ async function deleteMsg(id) {
 async function renderUsers() {
   document.getElementById('content').innerHTML = `
     <div class="table-wrap">
-      <div class="table-header"><h3>Users</h3></div>
-      <table><thead><tr><th>User</th><th>Role</th><th>Reputation</th><th>Status</th><th>Joined</th><th>Actions</th></tr></thead>
-      <tbody id="users-body">Loading…</tbody></table>
+      <div class="table-header"><h3>${t('users')}</h3></div>
+      <table><thead><tr><th>${t('user')}</th><th>${t('role')}</th><th>${t('reputation')}</th><th>${t('status')}</th><th>${t('joined')}</th><th>${t('actions')}</th></tr></thead>
+      <tbody id="users-body"><tr><td colspan="6" class="empty-state"><p>${t('loading')}</p></td></tr></tbody></table>
     </div>`
   const data = await api.get('/users')
   const users = data?.users || []
@@ -477,27 +615,27 @@ async function renderUsers() {
     </div></td>
     <td><span class="badge ${roleBadge(u.role)}">${u.role}</span></td>
     <td>${u.reputation}</td>
-    <td>${u.is_banned?'<span class="badge badge-red">Banned</span>':'<span class="badge badge-green">Active</span>'}</td>
+    <td>${u.is_banned?`<span class="badge badge-red">${t('ban')}</span>`:`<span class="badge badge-green">${t('active')}</span>`}</td>
     <td style="font-size:12px;color:#6b7280">${new Date(u.created_at).toLocaleDateString()}</td>
     <td class="actions-cell">
       ${u.role!=='admin'?`
         ${u.is_banned
-          ?`<button class="btn btn-xs btn-outline" onclick="unbanUser(${u.id})">Unban</button>`
-          :`<button class="btn btn-xs" style="background:#fee2e2;color:#991b1b" onclick="banUser(${u.id})">Ban</button>`}
-        <button class="btn btn-xs btn-outline" onclick="editRep(${u.id},${u.reputation})">Rep</button>
+          ?`<button class="btn btn-xs btn-outline" onclick="unbanUser(${u.id})">${t('unban')}</button>`
+          :`<button class="btn btn-xs" style="background:#fee2e2;color:#991b1b" onclick="banUser(${u.id})">${t('ban')}</button>`}
+        <button class="btn btn-xs btn-outline" onclick="editRep(${u.id},${u.reputation})">${t('rep')}</button>
       `:'<span style="color:#6b7280;font-size:12px">—</span>'}
     </td>
   </tr>`).join('')
-  document.getElementById('users-body').innerHTML = rows || emptyRow(6,'No users yet')
+  document.getElementById('users-body').innerHTML = rows || emptyRow(6,t('no_users'))
 }
-async function banUser(id) { if (!confirm('Ban this user?')) return; await api.put('/users/'+id+'/ban'); renderUsers() }
+async function banUser(id) { if (!confirm(t('ban_confirm'))) return; await api.put('/users/'+id+'/ban'); renderUsers() }
 async function unbanUser(id) { await api.put('/users/'+id+'/unban'); renderUsers() }
 function editRep(id, cur) {
-  modal(`<h3>Set Reputation</h3>
-    <div class="form-group"><label>Reputation Score</label><input id="rep-val" type="number" value="${cur}"></div>
+  modal(`<h3>${t('set_rep_title')}</h3>
+    <div class="form-group"><label>${t('rep_score')}</label><input id="rep-val" type="number" value="${cur}"></div>
     <div class="modal-actions">
-      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveRep(${id})">Save</button>
+      <button class="btn btn-outline" onclick="closeModal()">${t('cancel')}</button>
+      <button class="btn btn-primary" onclick="saveRep(${id})">${t('save')}</button>
     </div>`)
 }
 async function saveRep(id) {
@@ -509,14 +647,14 @@ async function saveRep(id) {
 async function renderReports() {
   document.getElementById('content').innerHTML = `
     <div class="section-tabs">
-      <div class="tab active" onclick="switchReportTab('pending',this)">Pending</div>
-      <div class="tab" onclick="switchReportTab('resolved',this)">Resolved</div>
-      <div class="tab" onclick="switchReportTab('dismissed',this)">Dismissed</div>
+      <div class="tab active" onclick="switchReportTab('pending',this)">${t('pending')}</div>
+      <div class="tab" onclick="switchReportTab('resolved',this)">${t('resolved')}</div>
+      <div class="tab" onclick="switchReportTab('dismissed',this)">${t('dismissed')}</div>
     </div>
     <div class="table-wrap">
-      <div class="table-header"><h3>Reports</h3></div>
-      <table><thead><tr><th>ID</th><th>Message ID</th><th>Reason</th><th>Status</th><th>Reported</th><th>Actions</th></tr></thead>
-      <tbody id="reports-body">Loading…</tbody></table>
+      <div class="table-header"><h3>${t('reports')}</h3></div>
+      <table><thead><tr><th>${t('report_id')}</th><th>${t('msg_id')}</th><th>${t('reason')}</th><th>${t('status')}</th><th>${t('reported')}</th><th>${t('actions')}</th></tr></thead>
+      <tbody id="reports-body"><tr><td colspan="6" class="empty-state"><p>${t('loading')}</p></td></tr></tbody></table>
     </div>`
   loadReports('pending')
 }
@@ -530,15 +668,15 @@ async function loadReports(status) {
     <td><span class="badge ${r.status==='pending'?'badge-yellow':r.status==='resolved'?'badge-green':'badge-gray'}">${r.status}</span></td>
     <td style="font-size:12px;color:#6b7280">${new Date(r.created_at).toLocaleDateString()}</td>
     <td class="actions-cell">${r.status==='pending'?`
-      <button class="btn btn-xs btn-primary" onclick="resolveReport(${r.id},'resolved')">Resolve</button>
-      <button class="btn btn-xs btn-outline" onclick="resolveReport(${r.id},'dismissed')">Dismiss</button>
+      <button class="btn btn-xs btn-primary" onclick="resolveReport(${r.id},'resolved')">${t('resolve')}</button>
+      <button class="btn btn-xs btn-outline" onclick="resolveReport(${r.id},'dismissed')">${t('dismiss')}</button>
     `:'-'}</td>
   </tr>`).join('')
-  document.getElementById('reports-body').innerHTML = rows || emptyRow(6,'No reports in this category')
+  document.getElementById('reports-body').innerHTML = rows || emptyRow(6,t('no_reports'))
   updateReportBadge()
 }
 function switchReportTab(status, el) {
-  document.querySelectorAll('.section-tabs .tab').forEach(t=>t.classList.remove('active'))
+  document.querySelectorAll('.section-tabs .tab').forEach(tab => tab.classList.remove('active'))
   el.classList.add('active'); loadReports(status)
 }
 async function resolveReport(id, status) {
@@ -547,44 +685,140 @@ async function resolveReport(id, status) {
 }
 
 // ── Widget & Embed ────────────────────────────────────────────────────────────
-function renderWidget() {
+function getEmbedCode(type) {
   const origin = window.location.origin
   const ch = state.channels.find(c=>c.is_default) || state.channels[0]
   const slug = ch?.slug || 'general'
+  const cfg = state.widgetCfg
+  const title = cfg.title || (lang==='zh'?'聊天':'Chat')
+  const pos = cfg.position || 'bottom-right'
+  const off = cfg.offset || 20
+  if (type === 'auto') {
+    let code = `<script src="${origin}/widget/chatsphere.js"\n  data-server="${origin}"\n  data-channel="${slug}"\n  data-position="${pos}"\n  data-offset="${off}"`
+    if (cfg.title) code += `\n  data-title="${cfg.title}"`
+    if (cfg.accent) code += `\n  data-accent="${cfg.accent}"`
+    if (cfg.notice) code += `\n  data-notice="${cfg.notice}"`
+    code += `>\n<\/script>`
+    return code
+  }
+  let opts = `    server:   '${origin}',\n    channel:  '${slug}',\n    position: '${pos}',\n    offset:   ${off},\n    title:    '${title}',`
+  if (cfg.accent) opts += `\n    accent:   '${cfg.accent}',`
+  if (cfg.notice) opts += `\n    notice:   '${cfg.notice}',`
+  return `<script src="${origin}/widget/chatsphere.js"><\/script>\n<script>\n  ChatSphere.init({\n${opts}\n  });\n<\/script>`
+}
+
+function hlCode(code) {
+  return esc(code)
+    .replace(/&lt;(\/?)(\w+)/g, (m,sl,tag) => `&lt;${sl}<span class="hl">${tag}</span>`)
+    .replace(/(data-[\w-]+|src|rel|href|type)=/g, '<span class="hl">$1</span>=')
+}
+
+function renderWidget() {
+  const cfg = state.widgetCfg
   document.getElementById('content').innerHTML = `
-    <div class="notice notice-info" style="margin-bottom:20px">
-      Copy one of the snippets below and paste it into your webpage's HTML, just before <code>&lt;/body&gt;</code>.
+    <div class="wgt-cfg">
+      <h3>${t('wgt_customize')}</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+        <div>
+          <div class="form-group">
+            <label>${t('wgt_position')}</label>
+            <div class="pos-grid">
+              <div class="pos-btn ${cfg.position==='top-left'?'active':''}" data-pos="top-left" onclick="setWgtPos('top-left')">${t('wgt_pos_tl')}</div>
+              <div class="pos-btn ${cfg.position==='top-right'?'active':''}" data-pos="top-right" onclick="setWgtPos('top-right')">${t('wgt_pos_tr')}</div>
+              <div class="pos-btn ${cfg.position==='bottom-left'?'active':''}" data-pos="bottom-left" onclick="setWgtPos('bottom-left')">${t('wgt_pos_bl')}</div>
+              <div class="pos-btn ${cfg.position==='bottom-right'?'active':''}" data-pos="bottom-right" onclick="setWgtPos('bottom-right')">${t('wgt_pos_br')}</div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>${t('wgt_offset')} <small style="color:#6b7280">${t('wgt_offset_hint')}</small></label>
+            <input id="wgt-offset" type="number" min="8" max="80" value="${cfg.offset||20}" style="width:100px" oninput="onWgtOffset(this.value)">
+          </div>
+        </div>
+        <div>
+          <div class="form-group">
+            <label>${t('wgt_accent')}</label>
+            <div style="display:flex;align-items:center;gap:8px">
+              <input type="color" id="wgt-accent-pick" value="${cfg.accent||'#f5a623'}" style="width:40px;height:36px;padding:2px;border-radius:6px;cursor:pointer" oninput="onWgtAccentPick(this.value)">
+              <input id="wgt-accent" value="${esc(cfg.accent||'')}" placeholder="#f5a623" style="flex:1" oninput="onWgtAccentInput(this.value)" maxlength="7">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>${t('wgt_chat_title')}</label>
+            <input id="wgt-title" value="${esc(cfg.title||'')}" placeholder="${t('wgt_title_placeholder')}" oninput="state.widgetCfg.title=this.value;updateEmbedCodes()">
+          </div>
+          <div class="form-group">
+            <label>${t('wgt_notice')}</label>
+            <input id="wgt-notice" value="${esc(cfg.notice||'')}" placeholder="${t('wgt_notice_placeholder')}" oninput="state.widgetCfg.notice=this.value;updateEmbedCodes()">
+          </div>
+        </div>
+      </div>
     </div>
     <div class="table-wrap" style="padding:20px;margin-bottom:20px">
-      <h3 style="margin-bottom:12px;font-size:15px">Auto-init (simplest)</h3>
-      <div class="embed-box">&lt;<span class="hl">script</span>
-  src=<span class="hl">"${origin}/widget/chatsphere.js"</span>
-  data-server=<span class="hl">"${origin}"</span>
-  data-channel=<span class="hl">"${slug}"</span>
-  data-position=<span class="hl">"bottom-right"</span>
-&gt;&lt;/<span class="hl">script</span>&gt;</div>
-      <button class="btn btn-outline btn-sm" onclick="copy(this,'auto')">Copy</button>
+      <h3 style="margin-bottom:12px;font-size:15px">${t('wgt_auto')}</h3>
+      <div class="embed-box" id="embed-auto"></div>
+      <button class="btn btn-outline btn-sm" onclick="copyEmbed(this,'auto')">${t('copy')}</button>
     </div>
     <div class="table-wrap" style="padding:20px;margin-bottom:20px">
-      <h3 style="margin-bottom:12px;font-size:15px">Manual init (more control)</h3>
-      <div class="embed-box">&lt;<span class="hl">link</span> rel=<span class="hl">"stylesheet"</span> href=<span class="hl">"${origin}/widget/chatsphere.css"</span>&gt;
-&lt;<span class="hl">script</span> src=<span class="hl">"${origin}/widget/chatsphere.js"</span>&gt;&lt;/<span class="hl">script</span>&gt;
-&lt;<span class="hl">script</span>&gt;
-  ChatSphere.init({
-    server:   <span class="hl">'${origin}'</span>,
-    channel:  <span class="hl">'${slug}'</span>,
-    position: <span class="hl">'bottom-right'</span>,
-    title:    <span class="hl">'My Community Chat'</span>,
-  });
-&lt;/<span class="hl">script</span>&gt;</div>
-      <button class="btn btn-outline btn-sm" onclick="copy(this,'manual')">Copy</button>
+      <h3 style="margin-bottom:12px;font-size:15px">${t('wgt_manual')}</h3>
+      <div class="embed-box" id="embed-manual"></div>
+      <button class="btn btn-outline btn-sm" onclick="copyEmbed(this,'manual')">${t('copy')}</button>
     </div>
     <div class="table-wrap" style="padding:20px">
-      <h3 style="margin-bottom:8px;font-size:15px">Live Preview</h3>
-      <p style="font-size:13px;color:#6b7280;margin-bottom:16px">The widget is active on this admin page. Look for the green button in the bottom-right corner.</p>
+      <h3 style="margin-bottom:8px;font-size:15px">${t('wgt_preview')}</h3>
+      <p style="font-size:13px;color:#6b7280">${t('wgt_preview_desc')}</p>
     </div>`
-  // Inject widget preview
+  updateEmbedCodes()
+  injectWidgetPreview()
+}
+
+function updateEmbedCodes() {
+  const autoEl = document.getElementById('embed-auto')
+  const manEl = document.getElementById('embed-manual')
+  if (!autoEl) return
+  autoEl.innerHTML = hlCode(getEmbedCode('auto'))
+  manEl.innerHTML = hlCode(getEmbedCode('manual'))
+}
+
+function setWgtPos(pos) {
+  state.widgetCfg.position = pos
+  document.querySelectorAll('.pos-btn').forEach(b => b.classList.toggle('active', b.dataset.pos === pos))
+  updateEmbedCodes()
+  const root = document.querySelector('[data-cs="root"]')
+  if (root) root.setAttribute('data-pos', pos)
+}
+
+function onWgtAccentPick(val) {
+  state.widgetCfg.accent = val
+  const inp = document.getElementById('wgt-accent')
+  if (inp) inp.value = val
+  updateEmbedCodes()
+  applyWidgetAccent(val)
+}
+
+function onWgtAccentInput(val) {
+  if (/^#[0-9a-fA-F]{6}$/.test(val)) {
+    state.widgetCfg.accent = val
+    const pick = document.getElementById('wgt-accent-pick')
+    if (pick) pick.value = val
+    updateEmbedCodes()
+    applyWidgetAccent(val)
+  }
+}
+
+function applyWidgetAccent(hex) {
+  const root = document.querySelector('[data-cs="root"]')
+  if (!root || !/^#[0-9a-fA-F]{6}$/.test(hex)) return
+  const r2 = parseInt(hex.slice(1,3),16), g2 = parseInt(hex.slice(3,5),16), b2 = parseInt(hex.slice(5,7),16)
+  root.style.setProperty('--accent', hex)
+  root.style.setProperty('--accent-dim', `rgba(${r2},${g2},${b2},.15)`)
+  root.style.setProperty('--accent-glow', `rgba(${r2},${g2},${b2},.35)`)
+}
+
+function injectWidgetPreview() {
   if (!document.querySelector('[data-cs="root"]')) {
+    const origin = window.location.origin
+    const ch = state.channels.find(c=>c.is_default) || state.channels[0]
+    const slug = ch?.slug || 'general'
     const s = document.createElement('script')
     s.src = origin + '/widget/chatsphere.js'
     s.setAttribute('data-server', origin)
@@ -592,15 +826,20 @@ function renderWidget() {
     document.body.appendChild(s)
   }
 }
-function copy(btn, type) {
-  const origin = window.location.origin
-  const ch = state.channels.find(c=>c.is_default)||state.channels[0]
-  const slug = ch?.slug||'general'
-  const texts = {
-    auto: `<script src="${origin}/widget/chatsphere.js" data-server="${origin}" data-channel="${slug}" data-position="bottom-right"><\/script>`,
-    manual: `<link rel="stylesheet" href="${origin}/widget/chatsphere.css">\n<script src="${origin}/widget/chatsphere.js"><\/script>\n<script>\n  ChatSphere.init({ server:'${origin}', channel:'${slug}', position:'bottom-right' });\n<\/script>`
-  }
-  navigator.clipboard.writeText(texts[type]).then(()=>{btn.textContent='Copied!';setTimeout(()=>btn.textContent='Copy',1500)})
+
+function onWgtOffset(val) {
+  const n = Math.min(80, Math.max(8, parseInt(val, 10) || 20))
+  state.widgetCfg.offset = n
+  updateEmbedCodes()
+  const root = document.querySelector('[data-cs="root"]')
+  if (root) root.style.setProperty('--offset', n + 'px')
+}
+
+function copyEmbed(btn, type) {
+  navigator.clipboard.writeText(getEmbedCode(type)).then(() => {
+    btn.textContent = t('copied')
+    setTimeout(() => btn.textContent = t('copy'), 1500)
+  })
 }
 
 // ── Modal helper ──────────────────────────────────────────────────────────────
@@ -620,17 +859,15 @@ function emptyRow(cols, msg) {
 // ── Moderation (Blocked Words) ────────────────────────────────────────────────
 async function renderModeration() {
   document.getElementById('content').innerHTML = `
-    <div class="notice notice-info" style="margin-bottom:16px">
-      Blocked words are checked on every message. <strong>Global rules</strong> apply to all channels; channel-specific rules apply only to that channel. The cache refreshes every 5 minutes.
-    </div>
+    <div class="notice notice-info" style="margin-bottom:16px">${t('bw_info')}</div>
     <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
-      <button class="btn btn-primary" onclick="newBlockedWord()">+ Add Rule</button>
+      <button class="btn btn-primary" onclick="newBlockedWord()">${t('add_rule')}</button>
     </div>
     <div class="table-wrap">
-      <div class="table-header"><h3>Blocked Words</h3></div>
+      <div class="table-header"><h3>${t('moderation')}</h3></div>
       <table>
-        <thead><tr><th>Pattern</th><th>Type</th><th>Scope</th><th>Added</th><th>Action</th></tr></thead>
-        <tbody id="bw-body">Loading…</tbody>
+        <thead><tr><th>${t('pattern')}</th><th>${t('type')}</th><th>${t('scope')}</th><th>${t('added')}</th><th>${t('action')}</th></tr></thead>
+        <tbody id="bw-body"><tr><td colspan="5" class="empty-state"><p>${t('loading')}</p></td></tr></tbody>
       </table>
     </div>`
   loadBlockedWords()
@@ -641,24 +878,24 @@ async function loadBlockedWords() {
   const chName = id => { const c = state.channels.find(x=>x.id===id); return c?c.name:'Channel '+id }
   const rows = words.map(w => `<tr>
     <td><code style="font-size:12px;background:#f3f4f6;padding:2px 6px;border-radius:4px">${esc(w.pattern)}</code></td>
-    <td><span class="badge ${w.is_regex?'badge-blue':'badge-gray'}">${w.is_regex?'Regex':'Literal'}</span></td>
-    <td>${w.channel_id?`<span class="tag">${esc(chName(w.channel_id))}</span>`:'<span class="badge badge-yellow">Global</span>'}</td>
+    <td><span class="badge ${w.is_regex?'badge-blue':'badge-gray'}">${w.is_regex?t('regex'):t('literal')}</span></td>
+    <td>${w.channel_id?`<span class="tag">${esc(chName(w.channel_id))}</span>`:`<span class="badge badge-yellow">${t('global')}</span>`}</td>
     <td style="font-size:12px;color:#6b7280">${new Date(w.created_at).toLocaleDateString()}</td>
-    <td><button class="btn btn-xs" style="background:#fee2e2;color:#991b1b" onclick="deleteBlockedWord(${w.id})">Remove</button></td>
+    <td><button class="btn btn-xs" style="background:#fee2e2;color:#991b1b" onclick="deleteBlockedWord(${w.id})">${t('remove')}</button></td>
   </tr>`).join('')
-  document.getElementById('bw-body').innerHTML = rows || emptyRow(5,'No blocked words configured')
+  document.getElementById('bw-body').innerHTML = rows || emptyRow(5,t('no_blocked_words'))
 }
 function newBlockedWord() {
-  const channelOpts = `<option value="">Global (all channels)</option>` +
+  const channelOpts = `<option value="">${t('bw_global')}</option>` +
     state.channels.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('')
-  modal(`<h3>Add Blocked Word</h3>
-    <div class="form-group"><label>Pattern</label><input id="bw-pattern" placeholder="e.g. spam or ^[A-Z]{5,}$"></div>
-    <div class="form-group"><label>Scope</label><select id="bw-channel">${channelOpts}</select></div>
-    <div class="toggle-row"><span>Regex pattern</span><label class="toggle"><input type="checkbox" id="bw-regex"><span class="slider"></span></label></div>
-    <p style="font-size:11px;color:#6b7280;margin-top:4px">Literal: case-insensitive substring match. Regex: full Go regexp syntax.</p>
+  modal(`<h3>${t('add_bw_title')}</h3>
+    <div class="form-group"><label>${t('bw_pattern')}</label><input id="bw-pattern" placeholder="e.g. spam or ^[A-Z]{5,}$"></div>
+    <div class="form-group"><label>${t('bw_scope')}</label><select id="bw-channel">${channelOpts}</select></div>
+    <div class="toggle-row"><span>${t('bw_regex_label')}</span><label class="toggle"><input type="checkbox" id="bw-regex"><span class="slider"></span></label></div>
+    <p style="font-size:11px;color:#6b7280;margin-top:4px">${t('bw_hint')}</p>
     <div class="modal-actions">
-      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveBlockedWord()">Add Rule</button>
+      <button class="btn btn-outline" onclick="closeModal()">${t('cancel')}</button>
+      <button class="btn btn-primary" onclick="saveBlockedWord()">${t('add')}</button>
     </div>`)
 }
 async function saveBlockedWord() {
@@ -674,11 +911,9 @@ async function saveBlockedWord() {
   closeModal(); loadBlockedWords()
 }
 async function deleteBlockedWord(id) {
-  if (!confirm('Remove this rule?')) return
+  if (!confirm(t('remove_rule_confirm'))) return
   await api.del('/blocked-words/'+id); loadBlockedWords()
 }
-
-setInterval(loadStats, 30000)
 </script>
 </body>
 </html>
