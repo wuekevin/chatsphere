@@ -207,11 +207,9 @@
       '  background:var(--accent);color:#fff;',
       '  border-radius:16px 16px 4px 16px;',
       '}',
-      '[data-cs="report-btn"]{',
-      '  font-size:10px;color:var(--muted);cursor:pointer;opacity:0;',
-      '  margin-top:2px;background:none;border:none;padding:0;transition:opacity .15s;',
-      '}',
-      '[data-cs="msg"]:hover [data-cs="report-btn"]{opacity:1}',
+      '[data-cs="msg-actions"]{display:flex;gap:8px;margin-top:3px;opacity:0;transition:opacity .15s}',
+      '[data-cs="msg"]:hover [data-cs="msg-actions"]{opacity:1}',
+      '[data-cs="report-btn"],[data-cs="dm-msg-btn"]{font-size:10px;color:var(--muted);cursor:pointer;background:none;border:none;padding:0}',
       '[data-cs="report-btn"]:hover{color:var(--err)}',
       '[data-cs="sys-msg"]{',
       '  text-align:center;font-size:12px;color:var(--muted);margin:6px 20px;',
@@ -372,8 +370,6 @@
       '[data-cs="dm-send"] svg{width:18px;height:18px;fill:#000;transform:translateX(1px)}',
       '[data-cs="dm-unread"]{position:absolute;top:-3px;right:-3px;min-width:14px;height:14px;border-radius:7px;background:var(--err);color:#fff;font-size:9px;font-weight:700;display:none;align-items:center;justify-content:center;padding:0 3px;border:1.5px solid var(--bg)}',
       '[data-cs="dm-unread"].cs-vis{display:flex}',
-      '[data-cs="dm-msg-btn"]{font-size:10px;color:var(--muted);cursor:pointer;opacity:0;margin-top:2px;background:none;border:none;padding:0;transition:opacity .15s}',
-      '[data-cs="msg"]:hover [data-cs="dm-msg-btn"]{opacity:1}',
       '[data-cs="dm-msg-btn"]:hover{color:var(--accent)}',
 
       /* ── Responsive (mobile: full-width panel) ── */
@@ -1027,16 +1023,18 @@
       msgWrap.appendChild(bubble);
       if (!mine) {
         var self = this;
+        var actionsEl = h('div', { 'data-cs': 'msg-actions' });
         var reportBtn = h('button', { 'data-cs': 'report-btn', 'text': self.wt('report') });
         reportBtn.addEventListener('click', function () { self._report(msg.id); });
-        msgWrap.appendChild(reportBtn);
+        actionsEl.appendChild(reportBtn);
         // DM button — only for registered users (non-anonymous with a user_id)
         if (!msg.is_anonymous && msg.user_id) {
           var dmMsgBtn = h('button', { 'data-cs': 'dm-msg-btn', 'text': self.wt('dm') });
           var _uid = msg.user_id, _uname = msg.display_name, _ucolor = msg.avatar_color;
           dmMsgBtn.addEventListener('click', function () { self._openDMConv(_uid, _uname, _ucolor); });
-          msgWrap.appendChild(dmMsgBtn);
+          actionsEl.appendChild(dmMsgBtn);
         }
+        msgWrap.appendChild(actionsEl);
       }
 
       // Wrapper row
