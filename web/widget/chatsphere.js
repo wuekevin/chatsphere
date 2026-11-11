@@ -59,9 +59,9 @@
       /* ── Button (card shape when closed, circle when open) ── */
       '@keyframes cs-pop{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}',
       '[data-cs="btn"]{',
-      '  width:min(260px,calc(100vw - 48px));height:56px;border-radius:28px;',
+      '  width:min(176px,calc(100vw - 48px));height:40px;border-radius:20px;',
       '  background:var(--accent);border:none;cursor:pointer;',
-      '  display:flex;align-items:center;gap:10px;padding:0 12px 0 10px;',
+      '  display:flex;align-items:center;gap:7px;padding:0 10px 0 6px;',
       '  box-shadow:0 4px 20px var(--accent-glow);',
       '  transition:width .3s cubic-bezier(.4,0,.2,1),height .3s,border-radius .3s,padding .3s;',
       '  position:relative;overflow:hidden;',
@@ -70,15 +70,15 @@
       '[data-cs="btn"]:hover{box-shadow:0 6px 24px var(--accent-glow)}',
       /* icon circle inside the card */
       '[data-cs="btn-icon"]{',
-      '  width:36px;height:36px;min-width:36px;border-radius:50%;',
+      '  width:26px;height:26px;min-width:26px;border-radius:50%;',
       '  background:rgba(0,0,0,.18);display:flex;align-items:center;justify-content:center;',
       '  transition:opacity .2s;flex-shrink:0;',
       '}',
-      '[data-cs="btn-icon"] svg{width:20px;height:20px;fill:#fff}',
+      '[data-cs="btn-icon"] svg{width:14px;height:14px;fill:#fff}',
       /* text column */
       '[data-cs="btn-info"]{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;overflow:hidden;transition:opacity .2s,max-width .3s}',
-      '[data-cs="btn-title"]{font-size:13px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
-      '[data-cs="btn-preview"]{font-size:11px;color:rgba(255,255,255,.75);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+      '[data-cs="btn-title"]{font-size:12px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+      '[data-cs="btn-preview"]{font-size:10px;color:rgba(255,255,255,.75);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
       /* close icon (shown when open) */
       '[data-cs="btn-close-icon"]{width:20px;height:20px;fill:#fff;opacity:0;position:absolute;transition:opacity .2s;pointer-events:none}',
       /* open state: collapse to circle */
