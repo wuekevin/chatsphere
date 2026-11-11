@@ -143,6 +143,7 @@
       '[data-cs="hbtn"]:hover{background:var(--surface-2);color:var(--fg)}',
       '@media(prefers-color-scheme:light){[data-cs="hbtn"]:hover{background:rgba(0,0,0,.15);color:#fff}}',
       '[data-cs="hbtn"] svg{width:16px;height:16px;fill:currentColor}',
+      '[data-cs="hbtn"][data-lang-btn]{width:auto;min-width:0;padding:0 7px;font-size:11px;font-weight:700;letter-spacing:.02em}',
 
       /* ── Notice banner ── */
       '[data-cs="notice"]{',
@@ -531,10 +532,15 @@
     this.position    = opts.position || 'bottom-right';
     this.title       = opts.title    || '';
     this.notice      = opts.notice   || '';
-    this.lang        = (opts.lang === 'en') ? 'en' : 'zh';
     this.telegramURL = opts.telegram || '';
     this.accent      = opts.accent   || '';
     this.offset      = Math.min(80, Math.max(8, parseInt(opts.offset, 10) || 20));
+
+    // Language: user localStorage preference → embed attr → default zh
+    this._langKey = 'cs:lang:' + (this.server || 'default');
+    var savedLang; try { savedLang = localStorage.getItem(this._langKey); } catch (_) {}
+    var defaultLang = opts.lang === 'en' ? 'en' : 'zh';
+    this.lang = (savedLang === 'zh' || savedLang === 'en') ? savedLang : defaultLang;
 
     this.ws          = null;
     this.isOpen      = false;
@@ -570,6 +576,56 @@
   Widget.prototype = {
 
     wt: function(key) { var d = WL[this.lang] || WL.zh; return d[key] || key; },
+
+    _toggleLang: function () {
+      this.lang = this.lang === 'zh' ? 'en' : 'zh';
+      try { localStorage.setItem(this._langKey, this.lang); } catch (_) {}
+      this._applyLang();
+    },
+
+    _applyLang: function () {
+      var self = this;
+      // Header
+      if (this.langBtn) this.langBtn.textContent = this.lang === 'en' ? '中' : 'EN';
+      if (this.titleEl && !this.title) this.titleEl.textContent = this.lang === 'en' ? 'Chat' : '聊天';
+      if (this.onlineSpan) this.onlineSpan.textContent = (this.onlineCount || 0) + this.wt('online');
+      if (this.minBtn)  { this.minBtn.title = this.wt('minimise'); this.minBtn.setAttribute('aria-label', this.wt('minimise')); }
+      if (this.dmBtnEl) { this.dmBtnEl.title = this.wt('dm'); this.dmBtnEl.setAttribute('aria-label', this.wt('dm')); }
+      this._updateAuthButton();
+      // Input row
+      if (this.inputEl) this.inputEl.placeholder = this.wt('placeholder');
+      if (this.sendBtn) { this.sendBtn.title = this.wt('send'); this.sendBtn.setAttribute('aria-label', this.wt('send')); }
+      // Notice
+      if (this.noticeCls) this.noticeCls.setAttribute('aria-label', this.wt('dismiss'));
+      // New-message button
+      if (this.newMsgBtn && this.pendingNew > 0) this.newMsgBtn.textContent = this.wt('new_msgs')(this.pendingNew);
+      // Auth overlay
+      if (this.authOverlay) this.authOverlay.setAttribute('aria-label', this.wt('sign_in_up'));
+      if (this._authTabLogin) this._authTabLogin.textContent = this.wt('sign_in');
+      if (this._authTabReg)   this._authTabReg.textContent   = this.wt('sign_up');
+      if (this._loginBtn) this._loginBtn.textContent = this.wt('sign_in');
+      if (this._regBtn)   this._regBtn.textContent   = this.wt('sign_up');
+      if (this._guestBtn) this._guestBtn.textContent = this.wt('guest');
+      // Auth field labels + placeholders
+      var fieldDefs = [
+        [this._loginUser, this.wt('username'), this.wt('username')],
+        [this._loginPass, this.wt('password'), this.wt('password')],
+        [this._regUser,   this.wt('username'), this.wt('reg_username_ph')],
+        [this._regEmail,  this.wt('email'),    this.wt('email_ph')],
+        [this._regPass,   this.wt('password'), this.wt('reg_password_ph')],
+      ];
+      fieldDefs.forEach(function (fd) {
+        if (!fd[0]) return;
+        var lbl = fd[0].previousElementSibling;
+        if (lbl) lbl.textContent = fd[1];
+        fd[0].placeholder = fd[2];
+      });
+      // DM panel
+      if (this.dmBackBtn) { this.dmBackBtn.title = this.wt('back'); this.dmBackBtn.setAttribute('aria-label', this.wt('back')); }
+      if (this.dmHdrTitle && !this.dmConvUserId) this.dmHdrTitle.textContent = this.wt('dm_title');
+      if (this.dmEmptyEl) this.dmEmptyEl.innerHTML = '<svg viewBox="0 0 24 24" style="width:40px;height:40px;opacity:.3;fill:currentColor"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg><div>' + this.wt('dm_empty') + '</div><div style="font-size:11px;margin-top:4px">' + this.wt('dm_empty_hint') + '</div>';
+      if (this.dmInputEl) { this.dmInputEl.placeholder = this.wt('dm_placeholder'); this.dmInputEl.setAttribute('aria-label', this.wt('dm_title')); }
+    },
 
     // ── Build DOM ──────────────────────────────────────────────────────────────
 
@@ -685,9 +741,14 @@
         }
       });
 
-      var minBtn = h('button', { 'data-cs': 'hbtn', 'title': this.wt('minimise'), 'aria-label': this.wt('minimise') });
+      var minBtn = this.minBtn = h('button', { 'data-cs': 'hbtn', 'title': this.wt('minimise'), 'aria-label': this.wt('minimise') });
       minBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M19 13H5v-2h14v2z"/></svg>';
       minBtn.addEventListener('click', function () { self.toggle(); });
+
+      // Language toggle button
+      var langBtn = this.langBtn = h('button', { 'data-cs': 'hbtn', 'data-lang-btn': '', 'title': 'Language', 'aria-label': 'Switch language' });
+      langBtn.textContent = this.lang === 'en' ? '中' : 'EN';
+      langBtn.addEventListener('click', function (e) { e.stopPropagation(); self._toggleLang(); });
 
       // DM button (only shown for registered users, populated after 'joined')
       var dmBtn = this.dmBtnEl = h('button', { 'data-cs': 'hbtn', 'title': this.wt('dm'), 'aria-label': this.wt('dm'), 'style': 'position:relative;display:none' });
@@ -701,6 +762,7 @@
       hdr.appendChild(onlineEl);
       hdr.appendChild(dmBtn);
       hdr.appendChild(authBtn);
+      hdr.appendChild(langBtn);
       hdr.appendChild(minBtn);
 
       return hdr;
@@ -714,7 +776,7 @@
 
       el.classList.remove('cs-hidden');
       var txt = h('span', { 'data-cs': 'notice-text', 'text': this.notice });
-      var cls = h('button', { 'data-cs': 'notice-close', 'aria-label': this.wt('dismiss'), 'text': '×' });
+      var cls = this.noticeCls = h('button', { 'data-cs': 'notice-close', 'aria-label': this.wt('dismiss'), 'text': '×' });
       cls.addEventListener('click', function () { el.classList.add('cs-hidden'); });
       el.appendChild(txt);
       el.appendChild(cls);
@@ -757,7 +819,7 @@
         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); self._send(); }
       });
 
-      var sendBtn = h('button', { 'data-cs': 'send', 'title': this.wt('send'), 'aria-label': this.wt('send') });
+      var sendBtn = this.sendBtn = h('button', { 'data-cs': 'send', 'title': this.wt('send'), 'aria-label': this.wt('send') });
       sendBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>';
       sendBtn.addEventListener('click', function () { self._send(); });
 
@@ -971,32 +1033,32 @@
 
       // Tabs
       var tabs = cs('auth-tabs');
-      var tabLogin = h('button', { 'data-cs': 'auth-tab', 'text': this.wt('sign_in') });
-      var tabReg   = h('button', { 'data-cs': 'auth-tab', 'text': this.wt('sign_up') });
+      var tabLogin = this._authTabLogin = h('button', { 'data-cs': 'auth-tab', 'text': this.wt('sign_in') });
+      var tabReg   = this._authTabReg   = h('button', { 'data-cs': 'auth-tab', 'text': this.wt('sign_up') });
       tabLogin.classList.add('cs-active');
       tabs.appendChild(tabLogin);
       tabs.appendChild(tabReg);
 
       // Login form
       var loginForm = cs('auth-form');
-      var loginUser = this._authField(loginForm, this.wt('username'), 'text', 'username', this.wt('username'));
-      var loginPass = this._authField(loginForm, this.wt('password'), 'password', 'current-password', this.wt('password'));
+      var loginUser = this._loginUser = this._authField(loginForm, this.wt('username'), 'text', 'username', this.wt('username'));
+      var loginPass = this._loginPass = this._authField(loginForm, this.wt('password'), 'password', 'current-password', this.wt('password'));
       var loginErr  = cs('auth-err'); loginForm.appendChild(loginErr);
-      var loginBtn  = h('button', { 'data-cs': 'auth-submit', 'text': this.wt('sign_in'), 'type': 'button' });
+      var loginBtn  = this._loginBtn = h('button', { 'data-cs': 'auth-submit', 'text': this.wt('sign_in'), 'type': 'button' });
       loginForm.appendChild(loginBtn);
 
       // Register form
       var regForm  = cs('auth-form');
       regForm.classList.add('cs-hidden');
-      var regUser  = this._authField(regForm, this.wt('username'), 'text', 'username', this.wt('reg_username_ph'));
-      var regEmail = this._authField(regForm, this.wt('email'), 'email', 'email', this.wt('email_ph'));
-      var regPass  = this._authField(regForm, this.wt('password'), 'password', 'new-password', this.wt('reg_password_ph'));
+      var regUser  = this._regUser  = this._authField(regForm, this.wt('username'), 'text', 'username', this.wt('reg_username_ph'));
+      var regEmail = this._regEmail = this._authField(regForm, this.wt('email'), 'email', 'email', this.wt('email_ph'));
+      var regPass  = this._regPass  = this._authField(regForm, this.wt('password'), 'password', 'new-password', this.wt('reg_password_ph'));
       var regErr   = cs('auth-err'); regForm.appendChild(regErr);
-      var regBtn   = h('button', { 'data-cs': 'auth-submit', 'text': this.wt('sign_up'), 'type': 'button' });
+      var regBtn   = this._regBtn = h('button', { 'data-cs': 'auth-submit', 'text': this.wt('sign_up'), 'type': 'button' });
       regForm.appendChild(regBtn);
 
       // Guest link
-      var guestBtn = h('button', { 'data-cs': 'auth-guest', 'text': this.wt('guest'), 'type': 'button' });
+      var guestBtn = this._guestBtn = h('button', { 'data-cs': 'auth-guest', 'text': this.wt('guest'), 'type': 'button' });
 
       overlay.appendChild(tabs);
       overlay.appendChild(loginForm);
