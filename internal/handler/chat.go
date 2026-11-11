@@ -87,6 +87,13 @@ func wsHandler(chSvc *service.ChannelService, userRepo repository.UserRepository
 			}
 			displayName = anonName(anonID)
 			avatarColor = randomColor(displayName)
+			country = c.GetHeader("CF-IPCountry")
+			if country == "" {
+				country = c.GetHeader("X-Country")
+			}
+			if len(country) != 2 {
+				country = ""
+			}
 		}
 
 		ws.ServeWS(hub, channel, c.Writer, c.Request,

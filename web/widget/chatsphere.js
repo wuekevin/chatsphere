@@ -444,14 +444,59 @@
     return palette[Math.abs(n) % palette.length];
   }
 
+  // ── i18n ─────────────────────────────────────────────────────────────────────
+
+  var WL = {
+    zh: {
+      placeholder:'说点什么…', account:'账号', minimise:'最小化', dm:'私信',
+      report:'举报', dismiss:'关闭', send:'发送', online:' 在线',
+      sign_in_up:'登录 / 注册', sign_in:'登录', sign_up:'注册',
+      sign_in_ing:'登录中…', sign_up_ing:'注册中…',
+      sign_in_fail:'登录失败', sign_up_fail:'注册失败',
+      sign_out:'退出登录', net_err:'网络错误，请重试',
+      fill_required:'请填写用户名和密码',
+      username_short:'用户名至少3个字符', password_short:'密码至少6位',
+      username:'用户名', password:'密码',
+      email:'邮箱（选填）', reg_username_ph:'3-30个字符',
+      email_ph:'you@example.com', reg_password_ph:'至少6位',
+      new_msgs:function(n){return '↓ '+n+' 条新消息';},
+      dm_title:'私信', dm_empty:'暂无私信',
+      dm_empty_hint:'点击消息右下角的「私信」可以发起对话',
+      dm_placeholder:'发私信…', dm_send:'发送',
+      back:'返回', close:'关闭',
+      guest:'以访客身份继续',
+    },
+    en: {
+      placeholder:'Say something…', account:'Account', minimise:'Minimise', dm:'DMs',
+      report:'Report', dismiss:'Dismiss', send:'Send', online:' online',
+      sign_in_up:'Sign in / Sign up', sign_in:'Sign in', sign_up:'Sign up',
+      sign_in_ing:'Signing in…', sign_up_ing:'Signing up…',
+      sign_in_fail:'Sign in failed', sign_up_fail:'Sign up failed',
+      sign_out:'Sign out', net_err:'Network error, please retry',
+      fill_required:'Please enter username and password',
+      username_short:'Username must be at least 3 characters',
+      password_short:'Password must be at least 6 characters',
+      username:'Username', password:'Password',
+      email:'Email (optional)', reg_username_ph:'3-30 chars',
+      email_ph:'you@example.com', reg_password_ph:'Min 6 chars',
+      new_msgs:function(n){return '↓ '+n+' new messages';},
+      dm_title:'Messages', dm_empty:'No messages yet',
+      dm_empty_hint:'Click DM on a message to start a conversation',
+      dm_placeholder:'Send a message…', dm_send:'Send',
+      back:'Back', close:'Close',
+      guest:'Continue as guest',
+    }
+  };
+
   // ── Widget ───────────────────────────────────────────────────────────────────
 
   function Widget(opts) {
     this.server      = (opts.server || '').replace(/\/$/, '');
     this.channel     = opts.channel  || 'general';
     this.position    = opts.position || 'bottom-right';
-    this.title       = opts.title    || 'Chat';
+    this.title       = opts.title    || '';
     this.notice      = opts.notice   || '';
+    this.lang        = (opts.lang === 'en') ? 'en' : 'zh';
     this.telegramURL = opts.telegram || '';
     this.accent      = opts.accent   || '';
     this.offset      = Math.min(80, Math.max(8, parseInt(opts.offset, 10) || 20));
@@ -488,6 +533,8 @@
   }
 
   Widget.prototype = {
+
+    wt: function(key) { var d = WL[this.lang] || WL.zh; return d[key] || key; },
 
     // ── Build DOM ──────────────────────────────────────────────────────────────
 
@@ -578,11 +625,11 @@
       wave.classList.add('cs-off');
       for (var i = 0; i < 5; i++) wave.appendChild(document.createElement('span'));
 
-      var titleEl = this.titleEl = h('span', { 'data-cs': 'title', 'text': this.title });
+      var titleEl = this.titleEl = h('span', { 'data-cs': 'title', 'text': this.title || (this.lang === 'en' ? 'Chat' : '聊天') });
 
       var onlineEl = this.onlineEl = cs('online');
       onlineEl.appendChild(cs('dot'));
-      this.onlineSpan = document.createTextNode('0 online');
+      this.onlineSpan = document.createTextNode('0' + this.wt('online'));
       onlineEl.appendChild(this.onlineSpan);
 
       if (this.telegramURL) {
@@ -593,7 +640,7 @@
       }
 
       // Auth button: shows username when logged in, person icon when logged out
-      var authBtn = this.authBtn = h('button', { 'data-cs': 'auth-user', 'title': '账号', 'aria-label': '账号' });
+      var authBtn = this.authBtn = h('button', { 'data-cs': 'auth-user', 'title': this.wt('account'), 'aria-label': this.wt('account') });
       authBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>';
       authBtn.addEventListener('click', function () {
         if (self.currentUser) {
@@ -603,12 +650,12 @@
         }
       });
 
-      var minBtn = h('button', { 'data-cs': 'hbtn', 'title': 'Minimise', 'aria-label': 'Close chat' });
+      var minBtn = h('button', { 'data-cs': 'hbtn', 'title': this.wt('minimise'), 'aria-label': this.wt('minimise') });
       minBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M19 13H5v-2h14v2z"/></svg>';
       minBtn.addEventListener('click', function () { self.toggle(); });
 
       // DM button (only shown for registered users, populated after 'joined')
-      var dmBtn = this.dmBtnEl = h('button', { 'data-cs': 'hbtn', 'title': '私信', 'aria-label': '私信', 'style': 'position:relative;display:none' });
+      var dmBtn = this.dmBtnEl = h('button', { 'data-cs': 'hbtn', 'title': this.wt('dm'), 'aria-label': this.wt('dm'), 'style': 'position:relative;display:none' });
       dmBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>';
       this.dmUnreadBadge = cs('dm-unread');
       dmBtn.appendChild(this.dmUnreadBadge);
@@ -632,7 +679,7 @@
 
       el.classList.remove('cs-hidden');
       var txt = h('span', { 'data-cs': 'notice-text', 'text': this.notice });
-      var cls = h('button', { 'data-cs': 'notice-close', 'aria-label': 'Dismiss', 'text': '×' });
+      var cls = h('button', { 'data-cs': 'notice-close', 'aria-label': this.wt('dismiss'), 'text': '×' });
       cls.addEventListener('click', function () { el.classList.add('cs-hidden'); });
       el.appendChild(txt);
       el.appendChild(cls);
@@ -666,7 +713,7 @@
 
       var inputEl = this.inputEl = h('textarea', {
         'data-cs':    'input',
-        'placeholder':'说点什么…',
+        'placeholder': this.wt('placeholder'),
         'rows':       '1',
         'aria-label': 'Message',
       });
@@ -675,7 +722,7 @@
         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); self._send(); }
       });
 
-      var sendBtn = h('button', { 'data-cs': 'send', 'title': 'Send', 'aria-label': 'Send' });
+      var sendBtn = h('button', { 'data-cs': 'send', 'title': this.wt('send'), 'aria-label': this.wt('send') });
       sendBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>';
       sendBtn.addEventListener('click', function () { self._send(); });
 
@@ -862,12 +909,12 @@
       msgWrap.appendChild(bubble);
       if (!mine) {
         var self = this;
-        var reportBtn = h('button', { 'data-cs': 'report-btn', 'text': 'Report' });
+        var reportBtn = h('button', { 'data-cs': 'report-btn', 'text': self.wt('report') });
         reportBtn.addEventListener('click', function () { self._report(msg.id); });
         msgWrap.appendChild(reportBtn);
         // DM button — only for registered users (non-anonymous with a user_id)
         if (!msg.is_anonymous && msg.user_id) {
-          var dmMsgBtn = h('button', { 'data-cs': 'dm-msg-btn', 'text': '私信' });
+          var dmMsgBtn = h('button', { 'data-cs': 'dm-msg-btn', 'text': self.wt('dm') });
           var _uid = msg.user_id, _uname = msg.display_name, _ucolor = msg.avatar_color;
           dmMsgBtn.addEventListener('click', function () { self._openDMConv(_uid, _uname, _ucolor); });
           msgWrap.appendChild(dmMsgBtn);
@@ -890,36 +937,36 @@
       var self = this;
       var overlay = cs('auth-overlay');
       overlay.setAttribute('role', 'dialog');
-      overlay.setAttribute('aria-label', '登录 / 注册');
+      overlay.setAttribute('aria-label', this.wt('sign_in_up'));
 
       // Tabs
       var tabs = cs('auth-tabs');
-      var tabLogin = h('button', { 'data-cs': 'auth-tab', 'text': '登录' });
-      var tabReg   = h('button', { 'data-cs': 'auth-tab', 'text': '注册' });
+      var tabLogin = h('button', { 'data-cs': 'auth-tab', 'text': this.wt('sign_in') });
+      var tabReg   = h('button', { 'data-cs': 'auth-tab', 'text': this.wt('sign_up') });
       tabLogin.classList.add('cs-active');
       tabs.appendChild(tabLogin);
       tabs.appendChild(tabReg);
 
       // Login form
       var loginForm = cs('auth-form');
-      var loginUser = this._authField(loginForm, '用户名', 'text', 'username', '用户名');
-      var loginPass = this._authField(loginForm, '密码', 'password', 'current-password', '密码');
+      var loginUser = this._authField(loginForm, this.wt('username'), 'text', 'username', this.wt('username'));
+      var loginPass = this._authField(loginForm, this.wt('password'), 'password', 'current-password', this.wt('password'));
       var loginErr  = cs('auth-err'); loginForm.appendChild(loginErr);
-      var loginBtn  = h('button', { 'data-cs': 'auth-submit', 'text': '登录', 'type': 'button' });
+      var loginBtn  = h('button', { 'data-cs': 'auth-submit', 'text': this.wt('sign_in'), 'type': 'button' });
       loginForm.appendChild(loginBtn);
 
       // Register form
       var regForm  = cs('auth-form');
       regForm.classList.add('cs-hidden');
-      var regUser  = this._authField(regForm, '用户名', 'text', 'username', '3-30个字符');
-      var regEmail = this._authField(regForm, '邮箱（选填）', 'email', 'email', 'you@example.com');
-      var regPass  = this._authField(regForm, '密码', 'password', 'new-password', '至少6位');
+      var regUser  = this._authField(regForm, this.wt('username'), 'text', 'username', this.wt('reg_username_ph'));
+      var regEmail = this._authField(regForm, this.wt('email'), 'email', 'email', this.wt('email_ph'));
+      var regPass  = this._authField(regForm, this.wt('password'), 'password', 'new-password', this.wt('reg_password_ph'));
       var regErr   = cs('auth-err'); regForm.appendChild(regErr);
-      var regBtn   = h('button', { 'data-cs': 'auth-submit', 'text': '注册', 'type': 'button' });
+      var regBtn   = h('button', { 'data-cs': 'auth-submit', 'text': this.wt('sign_up'), 'type': 'button' });
       regForm.appendChild(regBtn);
 
       // Guest link
-      var guestBtn = h('button', { 'data-cs': 'auth-guest', 'text': '以访客身份继续', 'type': 'button' });
+      var guestBtn = h('button', { 'data-cs': 'auth-guest', 'text': this.wt('guest'), 'type': 'button' });
 
       overlay.appendChild(tabs);
       overlay.appendChild(loginForm);
@@ -985,10 +1032,10 @@
 
     _doLogin: function (username, password, errEl, btn) {
       var self = this;
-      if (!username || !password) { errEl.textContent = '请填写用户名和密码'; return; }
+      if (!username || !password) { errEl.textContent = self.wt('fill_required'); return; }
       errEl.textContent = '';
       btn.disabled = true;
-      btn.textContent = '登录中…';
+      btn.textContent = self.wt('sign_in_ing');
 
       fetch(this.server + '/api/auth/login', {
         method: 'POST',
@@ -998,26 +1045,26 @@
         .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
         .then(function (res) {
           btn.disabled = false;
-          btn.textContent = '登录';
-          if (!res.ok) { errEl.textContent = res.d.error || '登录失败'; return; }
+          btn.textContent = self.wt('sign_in');
+          if (!res.ok) { errEl.textContent = res.d.error || self.wt('sign_in_fail'); return; }
           self._setAuthState(res.d.token, res.d.user);
           self._hideAuthOverlay();
         })
         .catch(function () {
           btn.disabled = false;
-          btn.textContent = '登录';
-          errEl.textContent = '网络错误，请重试';
+          btn.textContent = self.wt('sign_in');
+          errEl.textContent = self.wt('net_err');
         });
     },
 
     _doRegister: function (username, email, password, errEl, btn) {
       var self = this;
-      if (!username || !password) { errEl.textContent = '请填写用户名和密码'; return; }
-      if (username.length < 3) { errEl.textContent = '用户名至少3个字符'; return; }
-      if (password.length < 6) { errEl.textContent = '密码至少6位'; return; }
+      if (!username || !password) { errEl.textContent = self.wt('fill_required'); return; }
+      if (username.length < 3) { errEl.textContent = self.wt('username_short'); return; }
+      if (password.length < 6) { errEl.textContent = self.wt('password_short'); return; }
       errEl.textContent = '';
       btn.disabled = true;
-      btn.textContent = '注册中…';
+      btn.textContent = self.wt('sign_up_ing');
 
       fetch(this.server + '/api/auth/register', {
         method: 'POST',
@@ -1027,15 +1074,15 @@
         .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
         .then(function (res) {
           btn.disabled = false;
-          btn.textContent = '注册';
-          if (!res.ok) { errEl.textContent = res.d.error || '注册失败'; return; }
+          btn.textContent = self.wt('sign_up');
+          if (!res.ok) { errEl.textContent = res.d.error || self.wt('sign_up_fail'); return; }
           self._setAuthState(res.d.token, res.d.user);
           self._hideAuthOverlay();
         })
         .catch(function () {
           btn.disabled = false;
-          btn.textContent = '注册';
-          errEl.textContent = '网络错误，请重试';
+          btn.textContent = self.wt('sign_up');
+          errEl.textContent = self.wt('net_err');
         });
     },
 
@@ -1072,12 +1119,12 @@
       if (!this.authBtn) return;
       if (this.currentUser) {
         this.authBtn.textContent = this.currentUser.username;
-        this.authBtn.title = '退出登录';
-        this.authBtn.setAttribute('aria-label', '退出登录');
+        this.authBtn.title = this.wt('sign_out');
+        this.authBtn.setAttribute('aria-label', this.wt('sign_out'));
       } else {
         this.authBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>';
-        this.authBtn.title = '登录 / 注册';
-        this.authBtn.setAttribute('aria-label', '登录 / 注册');
+        this.authBtn.title = this.wt('sign_in_up');
+        this.authBtn.setAttribute('aria-label', this.wt('sign_in_up'));
       }
     },
 
@@ -1130,7 +1177,7 @@
 
     _setOnline: function (n) {
       this.onlineCount = n;
-      this.onlineSpan.textContent = n + ' online';
+      this.onlineSpan.textContent = n + this.wt('online');
     },
 
     _onScroll: function () {
@@ -1146,7 +1193,7 @@
 
     _showNewMsgBtn: function () {
       this.pendingNew++;
-      this.newMsgBtn.textContent = '↓ ' + this.pendingNew + ' 条新消息';
+      this.newMsgBtn.textContent = this.wt('new_msgs')(this.pendingNew);
       this.newMsgBtn.classList.add('cs-vis');
     },
 
@@ -1257,11 +1304,11 @@
 
       // Header
       var hdr = cs('dm-hdr');
-      var backBtn = this.dmBackBtn = h('button', { 'data-cs': 'hbtn', 'title': '返回', 'aria-label': '返回', 'style': 'display:none' });
+      var backBtn = this.dmBackBtn = h('button', { 'data-cs': 'hbtn', 'title': self.wt('back'), 'aria-label': self.wt('back'), 'style': 'display:none' });
       backBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>';
       backBtn.addEventListener('click', function () { self._dmBackToList(); });
-      var titleEl = this.dmHdrTitle = h('span', { 'data-cs': 'dm-hdr-title', 'text': '私信' });
-      var closeBtn = h('button', { 'data-cs': 'hbtn', 'title': '关闭', 'aria-label': '关闭' });
+      var titleEl = this.dmHdrTitle = h('span', { 'data-cs': 'dm-hdr-title', 'text': self.wt('dm_title') });
+      var closeBtn = h('button', { 'data-cs': 'hbtn', 'title': self.wt('close'), 'aria-label': self.wt('close') });
       closeBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>';
       closeBtn.addEventListener('click', function () { self._toggleDMPanel(); });
       hdr.appendChild(backBtn);
@@ -1275,7 +1322,7 @@
 
       // Empty state
       var emptyEl = this.dmEmptyEl = cs('dm-empty');
-      emptyEl.innerHTML = '<svg viewBox="0 0 24 24" style="width:40px;height:40px;opacity:.3;fill:currentColor"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg><div>暂无私信</div><div style="font-size:11px;margin-top:4px">点击消息右下角的「私信」可以发起对话</div>';
+      emptyEl.innerHTML = '<svg viewBox="0 0 24 24" style="width:40px;height:40px;opacity:.3;fill:currentColor"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg><div>' + self.wt('dm_empty') + '</div><div style="font-size:11px;margin-top:4px">' + self.wt('dm_empty_hint') + '</div>';
       emptyEl.classList.add('cs-hidden');
       panel.appendChild(emptyEl);
 
@@ -1287,12 +1334,12 @@
       // DM input footer
       var footer = this.dmFooterEl = cs('dm-footer');
       footer.classList.add('cs-hidden');
-      var inp = this.dmInputEl = h('textarea', { 'data-cs': 'dm-input', 'placeholder': '发私信…', 'rows': '1', 'aria-label': '私信内容' });
+      var inp = this.dmInputEl = h('textarea', { 'data-cs': 'dm-input', 'placeholder': self.wt('dm_placeholder'), 'rows': '1', 'aria-label': self.wt('dm_title') });
       inp.addEventListener('input', function () { self._dmInputResize(); });
       inp.addEventListener('keydown', function (e) {
         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); self._sendDM(); }
       });
-      var sendBtn = h('button', { 'data-cs': 'dm-send', 'title': '发送', 'aria-label': '发送' });
+      var sendBtn = h('button', { 'data-cs': 'dm-send', 'title': self.wt('dm_send'), 'aria-label': self.wt('dm_send') });
       sendBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>';
       sendBtn.addEventListener('click', function () { self._sendDM(); });
       footer.appendChild(inp);
@@ -1312,7 +1359,7 @@
 
     _dmShowList: function () {
       this.dmConvUserId = null;
-      this.dmHdrTitle.textContent = '私信';
+      this.dmHdrTitle.textContent = this.wt('dm_title');
       this.dmBackBtn.style.display = 'none';
       this.dmConvEl.classList.add('cs-hidden');
       this.dmFooterEl.classList.add('cs-hidden');
@@ -1503,11 +1550,12 @@
         server:   d.server   || location.origin,
         channel:  d.channel  || 'general',
         position: d.position || 'bottom-right',
-        title:    d.title    || 'Chat',
+        title:    d.title    || '',
         notice:   d.notice   || '',
         telegram: d.telegram || '',
         accent:   d.accent   || '',
         offset:   d.offset   || '',
+        lang:     d.lang     || '',
       });
     };
     if (document.readyState === 'loading') {
