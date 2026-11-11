@@ -271,14 +271,23 @@
       '}',
       '[data-cs="char-count"].cs-warn{color:var(--err)}',
 
-      /* ── Reputation badge ── */
+      /* ── Level badge ── */
       '[data-cs="badge-rep"]{',
-      '  font-size:10px;font-weight:700;padding:1px 5px;border-radius:4px;',
-      '  background:var(--surface-2);letter-spacing:.03em;flex-shrink:0;',
+      '  font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;',
+      '  background:var(--surface-2);color:var(--muted);letter-spacing:.03em;flex-shrink:0;',
       '}',
-      '[data-cs="badge-rep"].cs-gold{background:#78350f;color:#fcd34d}',
-      '[data-cs="badge-rep"].cs-silver{background:#374151;color:#d1d5db}',
-      '[data-cs="badge-rep"].cs-bronze{background:#1c1917;color:#a8a29e}',
+      '[data-cs="badge-rep"].cs-lv1{background:#1c2030;color:#94a3b8}',
+      '[data-cs="badge-rep"].cs-lv2{background:#1a2a1a;color:#86efac}',
+      '[data-cs="badge-rep"].cs-lv3{background:#1a2535;color:#60a5fa}',
+      '[data-cs="badge-rep"].cs-lv4{background:#251a35;color:#c084fc}',
+      '[data-cs="badge-rep"].cs-lv5{background:#2a1a1a;color:#f97316}',
+      '[data-cs="badge-rep"].cs-lv6{background:#2a2000;color:#facc15}',
+      '[data-cs="badge-rep"].cs-lv7{background:#001a2a;color:#22d3ee}',
+      '[data-cs="badge-rep"].cs-lv8{background:#1a0a2a;color:#e879f9}',
+      '[data-cs="badge-rep"].cs-lv9{background:#2a0a0a;color:#f87171}',
+      '[data-cs="badge-rep"].cs-lv10{background:linear-gradient(90deg,#78350f,#1e1b4b);color:#fde68a}',
+      '[data-cs="badge-rep"].cs-admin{background:#1a0505;color:#ef4444}',
+      '[data-cs="badge-rep"].cs-guest{background:var(--surface-2);color:var(--muted)}',
       /* @mention highlight */
       '[data-cs="mention"]{color:var(--accent);font-weight:600}',
       '[data-cs="msg"][data-mine] [data-cs="mention"]{color:inherit;opacity:.85}',
@@ -442,6 +451,32 @@
     var n = 0;
     for (var i = 0; i < seed.length; i++) n = (Math.imul(31, n) + seed.charCodeAt(i)) | 0;
     return palette[Math.abs(n) % palette.length];
+  }
+
+  // Level names: index 0 = LV.1 … index 9 = LV.10
+  var LEVEL_NAMES_ZH = ['初入者','探索者','进阶者','精英','卓越','大师','宗师','传奇','至尊','永恒之巅'];
+  var LEVEL_NAMES_EN = ['Novice','Explorer','Advanced','Elite','Premium','Master','Grandmaster','Legend','Supreme','Eternal'];
+
+  function _makeLevelBadge(badge, isAnon) {
+    var el = h('span', { 'data-cs': 'badge-rep' });
+    if (isAnon) {
+      el.classList.add('cs-guest');
+      el.textContent = 'LV.0 访客';
+      return el;
+    }
+    if (!badge) return null;
+    if (badge === 'LV.MAX') {
+      el.classList.add('cs-admin');
+      el.textContent = '创世者 Founder';
+      return el;
+    }
+    var m = badge.match(/^LV\.(\d+)$/);
+    if (!m) return null;
+    var lv = parseInt(m[1], 10);
+    el.classList.add('cs-lv' + lv);
+    var name = LEVEL_NAMES_ZH[lv - 1] || badge;
+    el.textContent = badge + ' ' + name;
+    return el;
   }
 
   // ── i18n ─────────────────────────────────────────────────────────────────────
@@ -888,14 +923,9 @@
       var nameEl = h('span', { 'data-cs': 'name', 'text': name });
       if (msg.is_anonymous) nameEl.classList.add('cs-anon');
       metaEl.appendChild(nameEl);
-      // Reputation badge (only for registered users)
-      if (!msg.is_anonymous && msg.badge) {
-        var badgeEl = h('span', { 'data-cs': 'badge-rep' });
-        var badgeMap = { GOLD: ['cs-gold','🥇'], SILVER: ['cs-silver','🥈'], BRONZE: ['cs-bronze','🥉'] };
-        var bd = badgeMap[msg.badge];
-        if (bd) { badgeEl.classList.add(bd[0]); badgeEl.textContent = bd[1] + ' ' + msg.badge; }
-        metaEl.appendChild(badgeEl);
-      }
+      // Level badge
+      var lvBadgeEl = _makeLevelBadge(msg.badge, msg.is_anonymous);
+      if (lvBadgeEl) metaEl.appendChild(lvBadgeEl);
       var timeEl = h('span', { 'data-cs': 'time', 'text': timeStr(msg.created_at) });
       metaEl.appendChild(timeEl);
 

@@ -1,6 +1,7 @@
 package model
 
 import (
+	"fmt"
 	"time"
 )
 
@@ -31,17 +32,47 @@ func (User) TableName() string {
 	return "users"
 }
 
-// Badge returns the display badge for the reputation tier.
-// ANON is not a user-level concept here; callers that know IsAnonymous should skip the badge.
-func (u *User) Badge() string {
-	switch {
-	case u.Reputation >= 500:
-		return "GOLD"
-	case u.Reputation >= 100:
-		return "SILVER"
-	default:
-		return "BRONZE"
+// levelThresholds maps experience points to level numbers.
+// Experience = total messages sent (Reputation field).
+var levelThresholds = []int{0, 10, 50, 150, 300, 500, 1000, 2000, 5000, 10000}
+
+// LevelNames holds Chinese and English names for LV.1–LV.10.
+var LevelNames = [][2]string{
+	{"初入者", "Novice"},
+	{"探索者", "Explorer"},
+	{"进阶者", "Advanced"},
+	{"精英", "Elite"},
+	{"卓越", "Premium"},
+	{"大师", "Master"},
+	{"宗师", "Grandmaster"},
+	{"传奇", "Legend"},
+	{"至尊", "Supreme"},
+	{"永恒之巅", "Eternal"},
+}
+
+// Level returns the numeric level (1–10) based on Reputation (experience points).
+func (u *User) Level() int {
+	if u.Role == RoleAdmin {
+		return 0 // special — displayed as Founder
 	}
+	lv := 1
+	for i, threshold := range levelThresholds {
+		if u.Reputation >= threshold {
+			lv = i + 1
+		}
+	}
+	if lv > 10 {
+		lv = 10
+	}
+	return lv
+}
+
+// LevelTag returns a compact tag like "LV.3" (or "LV.0" for admin placeholder, handled by callers).
+func (u *User) LevelTag() string {
+	if u.Role == RoleAdmin {
+		return "LV.MAX"
+	}
+	return fmt.Sprintf("LV.%d", u.Level())
 }
 
 // PublicProfile is the subset of User safe to send to other clients.
@@ -62,7 +93,7 @@ func (u *User) PublicProfile() PublicProfile {
 		AvatarColor: u.AvatarColor,
 		Country:     u.Country,
 		Reputation:  u.Reputation,
-		Badge:       u.Badge(),
+		Badge:       u.LevelTag(),
 		Role:        u.Role,
 	}
 }

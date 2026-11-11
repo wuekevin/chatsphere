@@ -46,6 +46,7 @@ type Client struct {
 	country     string
 	avatarColor string
 	reputation  int
+	role        string
 	isAnonymous bool
 	anonID      string
 
@@ -67,7 +68,7 @@ type InboundMessage struct {
 // ServeWS upgrades the connection and launches the client goroutines.
 // anonID is a precomputed 8-hex-char identity token (SHA-256(ip+salt)[:4]).
 func ServeWS(hub *Hub, channel *model.Channel, w http.ResponseWriter, r *http.Request,
-	userID *uint64, displayName, country, avatarColor string, reputation int, isAnon bool, anonID string) {
+	userID *uint64, displayName, country, avatarColor, role string, reputation int, isAnon bool, anonID string) {
 
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -86,6 +87,7 @@ func ServeWS(hub *Hub, channel *model.Channel, w http.ResponseWriter, r *http.Re
 		country:     country,
 		avatarColor: avatarColor,
 		reputation:  reputation,
+		role:        role,
 		isAnonymous: isAnon,
 		anonID:      anonID,
 	}
@@ -175,14 +177,8 @@ func (c *Client) handleSend(content string) {
 
 	badge := ""
 	if !c.isAnonymous {
-		switch {
-		case c.reputation >= 500:
-			badge = "GOLD"
-		case c.reputation >= 100:
-			badge = "SILVER"
-		default:
-			badge = "BRONZE"
-		}
+		u := &model.User{Reputation: c.reputation, Role: model.Role(c.role)}
+		badge = u.LevelTag()
 	}
 
 	record := &model.Message{

@@ -180,7 +180,7 @@ const L = {
     cancel:'取消', save:'保存',
     search_msg:'搜索消息…', user:'用户', message:'消息', channel:'频道', time:'时间', action:'操作',
     anon:'匿名', delete_btn:'删除',
-    role:'角色', reputation:'声望', joined:'注册时间', ban:'封禁', unban:'解封', rep:'声望值',
+    role:'角色', reputation:'等级', joined:'注册时间', ban:'封禁', unban:'解封', rep:'调整经验',
     pending:'待处理', resolved:'已处理', dismissed:'已忽略',
     report_id:'ID', msg_id:'消息ID', reason:'原因', reported:'举报时间',
     resolve:'处理', dismiss:'忽略',
@@ -190,7 +190,7 @@ const L = {
     add_bw_title:'添加敏感词', bw_pattern:'匹配模式', bw_scope:'范围',
     bw_global:'全局（所有频道）', bw_regex_label:'正则表达式',
     bw_hint:'精确匹配：不区分大小写。正则：Go regexp 语法。', add:'添加规则',
-    set_rep_title:'设置声望值', rep_score:'声望分数',
+    set_rep_title:'调整经验值', rep_score:'经验值（XP）',
     deactivate_confirm:'确认停用该频道？', delete_msg_confirm:'确认删除该消息？',
     ban_confirm:'确认封禁该用户？', remove_rule_confirm:'确认删除该规则？',
     no_channels:'暂无频道', no_messages:'未找到消息', no_users:'暂无用户',
@@ -228,7 +228,7 @@ const L = {
     cancel:'Cancel', save:'Save',
     search_msg:'Search messages…', user:'User', message:'Message', channel:'Channel', time:'Time', action:'Action',
     anon:'Anonymous', delete_btn:'Delete',
-    role:'Role', reputation:'Reputation', joined:'Joined', ban:'Ban', unban:'Unban', rep:'Rep',
+    role:'Role', reputation:'Level', joined:'Joined', ban:'Ban', unban:'Unban', rep:'Adjust XP',
     pending:'Pending', resolved:'Resolved', dismissed:'Dismissed',
     report_id:'ID', msg_id:'Msg ID', reason:'Reason', reported:'Reported',
     resolve:'Resolve', dismiss:'Dismiss',
@@ -238,7 +238,7 @@ const L = {
     add_bw_title:'Add Blocked Word', bw_pattern:'Pattern', bw_scope:'Scope',
     bw_global:'Global (all channels)', bw_regex_label:'Regex pattern',
     bw_hint:'Literal: case-insensitive substring match. Regex: full Go regexp syntax.', add:'Add Rule',
-    set_rep_title:'Set Reputation', rep_score:'Reputation Score',
+    set_rep_title:'Adjust XP', rep_score:'Experience Points (XP)',
     deactivate_confirm:'Deactivate this channel?', delete_msg_confirm:'Delete this message?',
     ban_confirm:'Ban this user?', remove_rule_confirm:'Remove this rule?',
     no_channels:'No channels yet', no_messages:'No messages found', no_users:'No users yet',
@@ -614,7 +614,7 @@ async function renderUsers() {
       <div><div class="u-name">${esc(u.username)}</div><div class="u-email">${esc(u.email||'')}</div></div>
     </div></td>
     <td><span class="badge ${roleBadge(u.role)}">${u.role}</span></td>
-    <td>${u.reputation}</td>
+    <td>${levelBadge(u.reputation, u.role)}<span style="margin-left:6px;font-size:11px;color:#9ca3af">${u.reputation} XP</span></td>
     <td>${u.is_banned?`<span class="badge badge-red">${t('ban')}</span>`:`<span class="badge badge-green">${t('active')}</span>`}</td>
     <td style="font-size:12px;color:#6b7280">${new Date(u.created_at).toLocaleDateString()}</td>
     <td class="actions-cell">
@@ -851,6 +851,26 @@ function closeModal() { document.getElementById('modal-container').innerHTML = '
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') }
+
+const LEVEL_THRESHOLDS = [0,10,50,150,300,500,1000,2000,5000,10000]
+const LEVEL_NAMES_ZH = ['初入者','探索者','进阶者','精英','卓越','大师','宗师','传奇','至尊','永恒之巅']
+const LEVEL_NAMES_EN = ['Novice','Explorer','Advanced','Elite','Premium','Master','Grandmaster','Legend','Supreme','Eternal']
+function levelFromXP(xp, role) {
+  if (role === 'admin') return { lv: 'MAX', name: lang === 'en' ? '创世者 Founder' : '创世者 Founder', css: '#1a0505;color:#ef4444' }
+  let lv = 1
+  for (let i = 0; i < LEVEL_THRESHOLDS.length; i++) {
+    if (xp >= LEVEL_THRESHOLDS[i]) lv = i + 1
+  }
+  if (lv > 10) lv = 10
+  const names = lang === 'en' ? LEVEL_NAMES_EN : LEVEL_NAMES_ZH
+  const colors = ['#1c2030;color:#94a3b8','#1a2a1a;color:#86efac','#1a2535;color:#60a5fa','#251a35;color:#c084fc','#2a1a1a;color:#f97316','#2a2000;color:#facc15','#001a2a;color:#22d3ee','#1a0a2a;color:#e879f9','#2a0a0a;color:#f87171','#78350f;color:#fde68a']
+  return { lv, name: names[lv-1], css: colors[lv-1] }
+}
+function levelBadge(xp, role) {
+  const { lv, name, css } = levelFromXP(xp, role)
+  const tag = lv === 'MAX' ? '创世者' : `LV.${lv}`
+  return `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:2px 7px;border-radius:4px;background:${css.split(';')[0].trim()};${css.includes('color:') ? 'color:'+css.split('color:')[1].trim() : ''}">${tag} ${name}</span>`
+}
 function v(id)  { return (document.getElementById(id)?.value||'').trim() }
 function emptyRow(cols, msg) {
   return `<tr><td colspan="${cols}" class="empty-state"><svg viewBox="0 0 24 24"><path d="M20 6h-2.18c.07-.44.18-.87.18-1.33C18 2.52 15.5 0 12.33 0c-1.66 0-3.17.69-4.24 1.8L6 4H2v2h4.17L8.5 3.67C9.17 2.96 10.21 2.5 11.33 2.5c2.07 0 3.17 1.5 3.17 3 0 .33-.06.65-.16.95L14.17 7H2v2h2.17L6 11.17V20c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2v-8.83L19.83 9H22V7h-2.17z"/></svg><p>${msg}</p></td></tr>`

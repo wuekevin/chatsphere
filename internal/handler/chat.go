@@ -59,6 +59,7 @@ func wsHandler(chSvc *service.ChannelService, userRepo repository.UserRepository
 			displayName string
 			country     string
 			avatarColor string
+			role        string
 			reputation  int
 			isAnon      = true
 		)
@@ -76,6 +77,7 @@ func wsHandler(chSvc *service.ChannelService, userRepo repository.UserRepository
 				country = user.Country
 				avatarColor = user.AvatarColor
 				reputation = user.Reputation
+				role = string(user.Role)
 				isAnon = false
 			}
 		}
@@ -97,7 +99,7 @@ func wsHandler(chSvc *service.ChannelService, userRepo repository.UserRepository
 		}
 
 		ws.ServeWS(hub, channel, c.Writer, c.Request,
-			userID, displayName, country, avatarColor, reputation, isAnon, anonID)
+			userID, displayName, country, avatarColor, role, reputation, isAnon, anonID)
 	}
 }
 
