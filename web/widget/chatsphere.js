@@ -471,7 +471,7 @@
     el.setAttribute('data-badge-raw', badge);
     if (badge === 'LV.MAX') {
       el.classList.add('cs-admin');
-      el.textContent = l === 'en' ? 'Admin Founder' : '创世者 Founder';
+      el.textContent = l === 'en' ? 'Admin Founder' : '管理员 创世者';
       return el;
     }
     var m = badge.match(/^LV\.(\d+)$/);
@@ -635,7 +635,7 @@
         if (raw === '__anon__') {
           el.textContent = selfLang === 'en' ? 'LV.0 Guest' : 'LV.0 访客';
         } else if (raw === 'LV.MAX') {
-          el.textContent = selfLang === 'en' ? 'Admin Founder' : '创世者 Founder';
+          el.textContent = selfLang === 'en' ? 'Admin Founder' : '管理员 创世者';
         } else {
           var m = raw.match(/^LV\.(\d+)$/);
           if (m) {
