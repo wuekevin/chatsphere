@@ -59,7 +59,7 @@
       /* ── Button (card shape when closed, circle when open) ── */
       '@keyframes cs-pop{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}',
       '[data-cs="btn"]{',
-      '  width:260px;height:56px;border-radius:28px;',
+      '  width:min(260px,calc(100vw - 48px));height:56px;border-radius:28px;',
       '  background:var(--accent);border:none;cursor:pointer;',
       '  display:flex;align-items:center;gap:10px;padding:0 12px 0 10px;',
       '  box-shadow:0 4px 20px var(--accent-glow);',
@@ -1094,6 +1094,14 @@
               } catch (_) {}
             });
             this._scrollBottom();
+            // Show last message as button preview when panel is closed
+            if (!this.isOpen) {
+              var last = evt.messages[evt.messages.length - 1];
+              if (last && typeof last !== 'string' && last.content && this.btnPreviewEl) {
+                var sender = last.display_name || last.username || '';
+                this.btnPreviewEl.textContent = sender ? sender + ': ' + last.content : last.content;
+              }
+            }
           }
           break;
 
