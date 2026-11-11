@@ -79,6 +79,15 @@ func wsHandler(chSvc *service.ChannelService, userRepo repository.UserRepository
 				reputation = user.Reputation
 				role = string(user.Role)
 				isAnon = false
+				if country == "" {
+					country = c.GetHeader("CF-IPCountry")
+					if country == "" {
+						country = c.GetHeader("X-Country")
+					}
+					if len(country) != 2 {
+						country = ""
+					}
+				}
 			}
 		}
 

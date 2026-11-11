@@ -406,7 +406,7 @@
   var EMOJIS = [
     '😀','😂','😍','🥰','😎','🤔','😮','😢','😡','🎉',
     '👍','👎','❤️','🔥','⭐','💯','🙌','🤝','👏','🚀',
-    '💬','✅','❌','⚠️','💡','🌍','🎯','🤩','😴','🫡',
+    '💬','✅','❌','⚠️','💡','🌍','🎯','🤩','😴','🤣',
   ];
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -458,25 +458,28 @@
   var LEVEL_NAMES_ZH = ['初入','探索','进阶','精英','卓越','大师','宗师','传奇','至尊','永恒'];
   var LEVEL_NAMES_EN = ['Novice','Explorer','Advanced','Elite','Premium','Master','Grandmaster','Legend','Supreme','Eternal'];
 
-  function _makeLevelBadge(badge, isAnon) {
+  function _makeLevelBadge(badge, isAnon, lang) {
     var el = h('span', { 'data-cs': 'badge-rep' });
+    var l = lang === 'en' ? 'en' : 'zh';
     if (isAnon) {
       el.classList.add('cs-guest');
-      el.textContent = 'LV.0 访客';
+      el.setAttribute('data-badge-raw', '__anon__');
+      el.textContent = l === 'en' ? 'LV.0 Guest' : 'LV.0 访客';
       return el;
     }
     if (!badge) return null;
+    el.setAttribute('data-badge-raw', badge);
     if (badge === 'LV.MAX') {
       el.classList.add('cs-admin');
-      el.textContent = '创世者 Founder';
+      el.textContent = l === 'en' ? 'Admin Founder' : '创世者 Founder';
       return el;
     }
     var m = badge.match(/^LV\.(\d+)$/);
     if (!m) return null;
     var lv = parseInt(m[1], 10);
     el.classList.add('cs-lv' + lv);
-    var name = LEVEL_NAMES_ZH[lv - 1] || badge;
-    el.textContent = badge + ' ' + name;
+    var names = l === 'en' ? LEVEL_NAMES_EN : LEVEL_NAMES_ZH;
+    el.textContent = badge + ' ' + (names[lv - 1] || badge);
     return el;
   }
 
@@ -625,6 +628,29 @@
       if (this.dmHdrTitle && !this.dmConvUserId) this.dmHdrTitle.textContent = this.wt('dm_title');
       if (this.dmEmptyEl) this.dmEmptyEl.innerHTML = '<svg viewBox="0 0 24 24" style="width:40px;height:40px;opacity:.3;fill:currentColor"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg><div>' + this.wt('dm_empty') + '</div><div style="font-size:11px;margin-top:4px">' + this.wt('dm_empty_hint') + '</div>';
       if (this.dmInputEl) { this.dmInputEl.placeholder = this.wt('dm_placeholder'); this.dmInputEl.setAttribute('aria-label', this.wt('dm_title')); }
+      // Update existing level badges, report buttons, DM buttons in message list
+      var selfLang = this.lang;
+      Array.prototype.forEach.call(this.msgs.querySelectorAll('[data-badge-raw]'), function(el) {
+        var raw = el.getAttribute('data-badge-raw');
+        if (raw === '__anon__') {
+          el.textContent = selfLang === 'en' ? 'LV.0 Guest' : 'LV.0 访客';
+        } else if (raw === 'LV.MAX') {
+          el.textContent = selfLang === 'en' ? 'Admin Founder' : '创世者 Founder';
+        } else {
+          var m = raw.match(/^LV\.(\d+)$/);
+          if (m) {
+            var lv = parseInt(m[1], 10);
+            var names = selfLang === 'en' ? LEVEL_NAMES_EN : LEVEL_NAMES_ZH;
+            el.textContent = raw + ' ' + (names[lv - 1] || raw);
+          }
+        }
+      });
+      Array.prototype.forEach.call(self.msgs.querySelectorAll('[data-cs="report-btn"]'), function(el) {
+        el.textContent = self.wt('report');
+      });
+      Array.prototype.forEach.call(self.msgs.querySelectorAll('[data-cs="dm-msg-btn"]'), function(el) {
+        el.textContent = self.wt('dm');
+      });
     },
 
     // ── Build DOM ──────────────────────────────────────────────────────────────
@@ -986,7 +1012,7 @@
       if (msg.is_anonymous) nameEl.classList.add('cs-anon');
       metaEl.appendChild(nameEl);
       // Level badge
-      var lvBadgeEl = _makeLevelBadge(msg.badge, msg.is_anonymous);
+      var lvBadgeEl = _makeLevelBadge(msg.badge, msg.is_anonymous, this.lang);
       if (lvBadgeEl) metaEl.appendChild(lvBadgeEl);
       var timeEl = h('span', { 'data-cs': 'time', 'text': timeStr(msg.created_at) });
       metaEl.appendChild(timeEl);
