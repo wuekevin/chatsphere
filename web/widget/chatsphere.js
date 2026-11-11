@@ -454,7 +454,7 @@
   }
 
   // Level names: index 0 = LV.1 … index 9 = LV.10
-  var LEVEL_NAMES_ZH = ['初入者','探索者','进阶者','精英','卓越','大师','宗师','传奇','至尊','永恒之巅'];
+  var LEVEL_NAMES_ZH = ['初入','探索','进阶','精英','卓越','大师','宗师','传奇','至尊','永恒'];
   var LEVEL_NAMES_EN = ['Novice','Explorer','Advanced','Elite','Premium','Master','Grandmaster','Legend','Supreme','Eternal'];
 
   function _makeLevelBadge(badge, isAnon) {

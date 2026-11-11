@@ -853,7 +853,7 @@ function closeModal() { document.getElementById('modal-container').innerHTML = '
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') }
 
 const LEVEL_THRESHOLDS = [0,10,50,150,300,500,1000,2000,5000,10000]
-const LEVEL_NAMES_ZH = ['初入者','探索者','进阶者','精英','卓越','大师','宗师','传奇','至尊','永恒之巅']
+const LEVEL_NAMES_ZH = ['初入','探索','进阶','精英','卓越','大师','宗师','传奇','至尊','永恒']
 const LEVEL_NAMES_EN = ['Novice','Explorer','Advanced','Elite','Premium','Master','Grandmaster','Legend','Supreme','Eternal']
 function levelFromXP(xp, role) {
   if (role === 'admin') return { lv: 'MAX', name: lang === 'en' ? '创世者 Founder' : '创世者 Founder', css: '#1a0505;color:#ef4444' }

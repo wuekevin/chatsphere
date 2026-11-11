@@ -38,16 +38,16 @@ var levelThresholds = []int{0, 10, 50, 150, 300, 500, 1000, 2000, 5000, 10000}
 
 // LevelNames holds Chinese and English names for LV.1–LV.10.
 var LevelNames = [][2]string{
-	{"初入者", "Novice"},
-	{"探索者", "Explorer"},
-	{"进阶者", "Advanced"},
+	{"初入", "Novice"},
+	{"探索", "Explorer"},
+	{"进阶", "Advanced"},
 	{"精英", "Elite"},
 	{"卓越", "Premium"},
 	{"大师", "Master"},
 	{"宗师", "Grandmaster"},
 	{"传奇", "Legend"},
 	{"至尊", "Supreme"},
-	{"永恒之巅", "Eternal"},
+	{"永恒", "Eternal"},
 }
 
 // Level returns the numeric level (1–10) based on Reputation (experience points).
