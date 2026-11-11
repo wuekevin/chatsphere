@@ -50,15 +50,19 @@ func RegisterAdmin(r *gin.Engine, db *gorm.DB, rdb *redis.Client, cfg *config.Co
 
 // RegisterWidget serves the admin SPA and the embeddable widget files.
 func RegisterWidget(r *gin.Engine, cfg *config.Config) {
-	// Serve the admin SPA (filesystem — convenient for development)
-	r.Static(cfg.Admin.Path, "./web/admin")
+	// Admin SPA — single index.html embedded in binary.
+	// Use exact routes only: a wildcard under cfg.Admin.Path conflicts with
+	// the /api sub-routes registered by RegisterAdmin in gin's radix tree.
+	adminHTML, _ := web.AdminHTML.ReadFile("admin/index.html")
+	serveAdmin := func(c *gin.Context) {
+		c.Data(http.StatusOK, "text/html; charset=utf-8", adminHTML)
+	}
+	r.GET(cfg.Admin.Path, serveAdmin)
+	r.GET(cfg.Admin.Path+"/", serveAdmin)
 
-	// Widget assets — embedded in binary so the production binary is self-contained (AD-7)
+	// Widget assets — embedded in binary so the production binary is self-contained.
 	widgetSub, _ := fs.Sub(web.WidgetFS, "widget")
 	r.StaticFS("/widget", http.FS(widgetSub))
-
-	// Serve installer (never reached if already installed, but harmless)
-	r.Static("/setup", "./web/installer")
 }
 
 // --- Stats ---
