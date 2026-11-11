@@ -14,6 +14,7 @@ import (
 	jsminify "github.com/tdewolff/minify/v2/js"
 	"gorm.io/gorm"
 
+	"github.com/wuekevin/chatsphere/internal/bot"
 	"github.com/wuekevin/chatsphere/internal/config"
 	"github.com/wuekevin/chatsphere/internal/middleware"
 	"github.com/wuekevin/chatsphere/internal/model"
@@ -21,7 +22,7 @@ import (
 )
 
 // RegisterAdmin wires admin API routes (all require admin role).
-func RegisterAdmin(r *gin.Engine, db *gorm.DB, rdb *redis.Client, cfg *config.Config) {
+func RegisterAdmin(r *gin.Engine, db *gorm.DB, rdb *redis.Client, cfg *config.Config, scheduler *bot.Scheduler) {
 	admin := r.Group(cfg.Admin.Path+"/api", middleware.AdminOnly(cfg.Server.SecretKey))
 
 	// Dashboard stats
@@ -55,6 +56,13 @@ func RegisterAdmin(r *gin.Engine, db *gorm.DB, rdb *redis.Client, cfg *config.Co
 	// Embed config
 	admin.GET("/embed-config", getEmbedConfig(db))
 	admin.PUT("/embed-config", saveEmbedConfig(db))
+
+	// Bots
+	admin.GET("/bots", adminListBots(db))
+	admin.POST("/bots", adminCreateBot(db))
+	admin.PUT("/bots/:id", adminUpdateBot(db))
+	admin.DELETE("/bots/:id", adminDeleteBot(db))
+	admin.POST("/bots/:id/fire", adminFireBot(db, scheduler))
 }
 
 // RegisterWidget serves the admin SPA and the embeddable widget files.
@@ -384,6 +392,109 @@ func saveEmbedConfig(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"config": body})
+	}
+}
+
+// --- Bots ---
+
+func adminListBots(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var bots []model.BotConfig
+		db.Order("created_at DESC").Find(&bots)
+		c.JSON(http.StatusOK, gin.H{"bots": bots})
+	}
+}
+
+type botRequest struct {
+	Name           string  `json:"name" binding:"required"`
+	AvatarColor    string  `json:"avatar_color"`
+	ChannelID      *uint64 `json:"channel_id"`
+	IntervalHours  int     `json:"interval_hours"`
+	WebhookURL     string  `json:"webhook_url" binding:"required"`
+	TelegramToken  string  `json:"telegram_token"`
+	TelegramChatID string  `json:"telegram_chat_id"`
+	IsActive       bool    `json:"is_active"`
+}
+
+func adminCreateBot(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req botRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		if req.IntervalHours <= 0 {
+			req.IntervalHours = 6
+		}
+		b := model.BotConfig{
+			Name:           req.Name,
+			AvatarColor:    req.AvatarColor,
+			ChannelID:      req.ChannelID,
+			IntervalHours:  req.IntervalHours,
+			WebhookURL:     req.WebhookURL,
+			TelegramToken:  req.TelegramToken,
+			TelegramChatID: req.TelegramChatID,
+			IsActive:       req.IsActive,
+		}
+		if err := db.Create(&b).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "create failed"})
+			return
+		}
+		c.JSON(http.StatusCreated, gin.H{"bot": b})
+	}
+}
+
+func adminUpdateBot(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, _ := strconv.ParseUint(c.Param("id"), 10, 64)
+		var b model.BotConfig
+		if err := db.First(&b, id).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+			return
+		}
+		var req botRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		if req.IntervalHours <= 0 {
+			req.IntervalHours = 6
+		}
+		db.Model(&b).Updates(map[string]interface{}{
+			"name":             req.Name,
+			"avatar_color":     req.AvatarColor,
+			"channel_id":       req.ChannelID,
+			"interval_hours":   req.IntervalHours,
+			"webhook_url":      req.WebhookURL,
+			"telegram_token":   req.TelegramToken,
+			"telegram_chat_id": req.TelegramChatID,
+			"is_active":        req.IsActive,
+		})
+		db.First(&b, id)
+		c.JSON(http.StatusOK, gin.H{"bot": b})
+	}
+}
+
+func adminDeleteBot(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, _ := strconv.ParseUint(c.Param("id"), 10, 64)
+		db.Delete(&model.BotConfig{}, id)
+		c.JSON(http.StatusOK, gin.H{"ok": true})
+	}
+}
+
+func adminFireBot(db *gorm.DB, scheduler *bot.Scheduler) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, _ := strconv.ParseUint(c.Param("id"), 10, 64)
+		var b model.BotConfig
+		if err := db.First(&b, id).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+			return
+		}
+		if scheduler != nil {
+			scheduler.FireBot(b)
+		}
+		c.JSON(http.StatusOK, gin.H{"ok": true})
 	}
 }
 

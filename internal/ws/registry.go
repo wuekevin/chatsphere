@@ -60,11 +60,12 @@ func (ur *UserRegistry) Send(userID uint64, payload []byte) bool {
 
 // HubRegistry manages per-channel Hub goroutines with lazy creation.
 type HubRegistry struct {
-	hubs       sync.Map // slug → *Hub
-	db         *gorm.DB
-	rdb        *redis.Client
-	userReg    *UserRegistry
-	tgNotifier TelegramNotifier
+	hubs        sync.Map // slug → *Hub
+	channelHubs sync.Map // channelID (uint64) → *Hub
+	db          *gorm.DB
+	rdb         *redis.Client
+	userReg     *UserRegistry
+	tgNotifier  TelegramNotifier
 }
 
 func NewHubRegistry(db *gorm.DB, rdb *redis.Client, userReg *UserRegistry) *HubRegistry {
@@ -93,6 +94,22 @@ func (r *HubRegistry) GetOrCreate(slug string, channelID uint64) *Hub {
 	if actual, loaded := r.hubs.LoadOrStore(slug, hub); loaded {
 		return actual.(*Hub)
 	}
+	r.channelHubs.Store(channelID, hub)
 	go hub.Run()
 	return hub
+}
+
+// BroadcastAll broadcasts an event to every active hub.
+func (r *HubRegistry) BroadcastAll(evt Event) {
+	r.hubs.Range(func(_, v any) bool {
+		v.(*Hub).BroadcastJSON(evt)
+		return true
+	})
+}
+
+// BroadcastToChannel broadcasts to the hub identified by channelID (if active).
+func (r *HubRegistry) BroadcastToChannel(channelID uint64, evt Event) {
+	if v, ok := r.channelHubs.Load(channelID); ok {
+		v.(*Hub).BroadcastJSON(evt)
+	}
 }

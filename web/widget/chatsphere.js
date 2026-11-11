@@ -418,6 +418,45 @@
       '[data-cs="dm-unread"].cs-vis{display:flex}',
       '[data-cs="dm-msg-btn"]:hover{color:var(--accent)}',
 
+      /* ── Channel switcher panel ── */
+      '[data-cs="ch-panel"]{position:absolute;inset:0;z-index:6;background:var(--surface);display:flex;flex-direction:column;transform:translateX(-105%);opacity:0;pointer-events:none;transition:transform .22s cubic-bezier(.4,0,.2,1),opacity .22s}',
+      '[data-cs="ch-panel"].cs-open{transform:translateX(0);opacity:1;pointer-events:all}',
+      '[data-cs="ch-hdr"]{display:flex;align-items:center;gap:8px;padding:0 14px;height:46px;border-bottom:1px solid var(--border);flex-shrink:0;background:linear-gradient(135deg,#1a1d28 0%,#0e1017 100%)}',
+      '@media(prefers-color-scheme:light){[data-cs="ch-hdr"]{background:linear-gradient(135deg,#c47f0a 0%,#e09612 100%)}}',
+      '[data-cs="ch-hdr-title"]{flex:1;font-weight:600;font-size:14px;color:var(--fg)}',
+      '@media(prefers-color-scheme:light){[data-cs="ch-hdr-title"]{color:#fff}}',
+      '[data-cs="ch-list"]{flex:1;overflow-y:auto}',
+      '[data-cs="ch-item"]{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .12s}',
+      '[data-cs="ch-item"]:hover{background:var(--surface-2)}',
+      '[data-cs="ch-item"].cs-active{background:var(--accent-dim);border-left:3px solid var(--accent)}',
+      '[data-cs="ch-av"]{width:36px;height:36px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:#fff;flex-shrink:0}',
+      '[data-cs="ch-info"]{flex:1;min-width:0}',
+      '[data-cs="ch-name"]{font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+      '[data-cs="ch-desc"]{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px}',
+
+      /* ── Bot card message ── */
+      '[data-cs="bot-card"]{',
+      '  display:flex;flex-direction:column;gap:6px;',
+      '  background:var(--surface-2);border-radius:12px;padding:10px;margin:6px 0;',
+      '  border:1px solid var(--border);overflow:hidden;',
+      '  animation:cs-fadein .2s ease;',
+      '}',
+      '[data-cs="bot-card-hdr"]{display:flex;align-items:center;gap:8px;margin-bottom:4px}',
+      '[data-cs="bot-card-av"]{width:28px;height:28px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0}',
+      '[data-cs="bot-card-name"]{font-size:12px;font-weight:700;color:var(--muted)}',
+      '[data-cs="bot-cards-wrap"]{display:flex;gap:8px;overflow-x:auto;scrollbar-width:thin;padding-bottom:4px}',
+      '[data-cs="bot-card-item"]{',
+      '  flex-shrink:0;width:160px;border-radius:10px;overflow:hidden;',
+      '  background:var(--surface);border:1px solid var(--border);',
+      '  display:flex;flex-direction:column;cursor:pointer;',
+      '  transition:transform .15s,box-shadow .15s;',
+      '}',
+      '[data-cs="bot-card-item"]:hover{transform:translateY(-2px);box-shadow:0 4px 16px rgba(0,0,0,.3)}',
+      '[data-cs="bot-card-img"]{width:100%;height:100px;object-fit:cover;background:var(--surface-2);display:block}',
+      '[data-cs="bot-card-body"]{padding:8px}',
+      '[data-cs="bot-card-title"]{font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:4px}',
+      '[data-cs="bot-card-desc"]{font-size:11px;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}',
+
       /* ── Responsive (mobile: full-width panel) ── */
       '@media(max-width:420px){',
       '  [data-cs="root"][data-pos="bottom-right"],',
@@ -617,9 +656,14 @@
     this.jwt         = null;
     this.currentUser = null;
 
+    // Channel switcher state
+    this.channels    = [];
+    this.chPanelOpen = false;
+
     injectCSS();
     this._buildDOM();
     this._loadAuth();  // restore saved session, then connect
+    this._loadChannels();
   }
 
   Widget.prototype = {
@@ -791,6 +835,9 @@
       // DM panel (slides in over main content)
       panel.appendChild(this._buildDMPanel());
 
+      // Channel switcher panel
+      panel.appendChild(this._buildChPanel());
+
       root.appendChild(panel);
       root.appendChild(btn);
       document.body.appendChild(root);
@@ -853,9 +900,15 @@
       dmBtn.appendChild(this.dmUnreadBadge);
       dmBtn.addEventListener('click', function (e) { e.stopPropagation(); self._toggleDMPanel(); });
 
+      // Channels button (shown when multiple channels exist)
+      var chBtn = this.chBtnEl = h('button', { 'data-cs': 'hbtn', 'title': '切换频道', 'aria-label': '切换频道', 'style': 'display:none' });
+      chBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M3 15h18v-2H3v2zm0 4h18v-2H3v2zm0-8h18V9H3v2zm0-6v2h18V5H3z"/></svg>';
+      chBtn.addEventListener('click', function (e) { e.stopPropagation(); self._toggleChPanel(); });
+
       hdr.appendChild(wave);
       hdr.appendChild(titleEl);
       hdr.appendChild(onlineEl);
+      hdr.appendChild(chBtn);
       hdr.appendChild(dmBtn);
       hdr.appendChild(authBtn);
       hdr.appendChild(langBtn);
@@ -1082,6 +1135,19 @@
             var sender = evt.message.display_name || '有人';
             this._addSysMsg('@ ' + sender + ' 提及了你');
             if (!this.isOpen) this._incUnread();
+          }
+          break;
+
+        case 'bot_card':
+          if (evt.bot_cards && evt.bot_cards.length) {
+            this._renderBotCards(evt.content || 'Bot', evt.avatar_color || '', evt.bot_cards);
+            if (!this.isOpen) {
+              this._incUnread();
+            } else if (this.nearBottom) {
+              this._scrollBottom();
+            } else {
+              this._showNewMsgBtn();
+            }
           }
           break;
       }
@@ -1762,6 +1828,122 @@
       var el = this.noticeEl.querySelector('[data-cs="notice-text"]');
       if (el) el.textContent = t;
       this.noticeEl.classList.toggle('cs-hidden', !t);
+    },
+
+    // ── Bot cards ─────────────────────────────────────────────────────────────
+
+    _renderBotCards: function (botName, avatarColor, cards) {
+      var wrap = h('div', { 'data-cs': 'bot-card' });
+
+      var hdr = h('div', { 'data-cs': 'bot-card-hdr' });
+      var av = h('div', { 'data-cs': 'bot-card-av' });
+      av.style.background = avatarColor || '#6366f1';
+      av.textContent = initials(botName);
+      var nameEl = h('div', { 'data-cs': 'bot-card-name', 'text': botName });
+      hdr.appendChild(av);
+      hdr.appendChild(nameEl);
+      wrap.appendChild(hdr);
+
+      var cardsWrap = h('div', { 'data-cs': 'bot-cards-wrap' });
+      cards.forEach(function (card) {
+        var item = h('div', { 'data-cs': 'bot-card-item' });
+        if (card.link) {
+          item.addEventListener('click', function () { window.open(card.link, '_blank'); });
+        }
+        if (card.poster) {
+          var img = h('img', { 'data-cs': 'bot-card-img', 'src': card.poster, 'alt': card.title || '' });
+          item.appendChild(img);
+        }
+        var body = h('div', { 'data-cs': 'bot-card-body' });
+        var titleEl = h('div', { 'data-cs': 'bot-card-title', 'text': card.title || '' });
+        var descEl = h('div', { 'data-cs': 'bot-card-desc', 'text': card.desc || '' });
+        body.appendChild(titleEl);
+        body.appendChild(descEl);
+        item.appendChild(body);
+        cardsWrap.appendChild(item);
+      });
+      wrap.appendChild(cardsWrap);
+      this.msgs.appendChild(wrap);
+    },
+
+    // ── Channel switcher ──────────────────────────────────────────────────────
+
+    _buildChPanel: function () {
+      var self = this;
+      var panel = this.chPanelEl = h('div', { 'data-cs': 'ch-panel' });
+
+      var hdr = h('div', { 'data-cs': 'ch-hdr' });
+      var titleEl = h('span', { 'data-cs': 'ch-hdr-title', 'text': '切换频道' });
+      var closeBtn = h('button', { 'data-cs': 'hbtn', 'title': '关闭', 'aria-label': '关闭' });
+      closeBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>';
+      closeBtn.addEventListener('click', function () { self._toggleChPanel(); });
+      hdr.appendChild(titleEl);
+      hdr.appendChild(closeBtn);
+      panel.appendChild(hdr);
+
+      this.chListEl = h('div', { 'data-cs': 'ch-list' });
+      panel.appendChild(this.chListEl);
+      return panel;
+    },
+
+    _toggleChPanel: function () {
+      this.chPanelOpen = !this.chPanelOpen;
+      this.chPanelEl.classList.toggle('cs-open', this.chPanelOpen);
+      if (this.chPanelOpen) this._renderChList();
+    },
+
+    _renderChList: function () {
+      var self = this;
+      this.chListEl.innerHTML = '';
+      this.channels.forEach(function (ch) {
+        var item = h('div', { 'data-cs': 'ch-item' });
+        if (ch.slug === self.channel) item.classList.add('cs-active');
+        var color = ch.accent_color || '#6366f1';
+        var av = h('div', { 'data-cs': 'ch-av', 'style': 'background:' + color });
+        av.textContent = initials(ch.name);
+        var info = h('div', { 'data-cs': 'ch-info' });
+        var nameEl = h('div', { 'data-cs': 'ch-name', 'text': ch.name });
+        info.appendChild(nameEl);
+        if (ch.description) {
+          var desc = h('div', { 'data-cs': 'ch-desc', 'text': ch.description });
+          info.appendChild(desc);
+        }
+        item.appendChild(av);
+        item.appendChild(info);
+        item.addEventListener('click', function () { self._switchChannel(ch); });
+        self.chListEl.appendChild(item);
+      });
+    },
+
+    _switchChannel: function (ch) {
+      if (ch.slug === this.channel) { this._toggleChPanel(); return; }
+      this.channel = ch.slug;
+      this.msgs.innerHTML = '';
+      this.myName = null;
+      if (this.titleEl) this.titleEl.textContent = ch.name || this.title || (this.lang === 'en' ? 'Chat' : '聊天');
+      if (this.btnTitleEl) this.btnTitleEl.textContent = ch.name || this.title || (this.lang === 'en' ? 'Chat' : '聊天');
+      if (ch.accent_color && /^#[0-9a-fA-F]{6}$/.test(ch.accent_color)) {
+        var hex = ch.accent_color;
+        var r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b2 = parseInt(hex.slice(5,7),16);
+        this.root.style.setProperty('--accent', hex);
+        this.root.style.setProperty('--accent-dim', 'rgba('+r+','+g+','+b2+',.15)');
+        this.root.style.setProperty('--accent-glow', 'rgba('+r+','+g+','+b2+',.35)');
+      }
+      this._toggleChPanel();
+      this._connect();
+    },
+
+    _loadChannels: function () {
+      var self = this;
+      fetch(this.server + '/api/channels')
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (data) {
+          if (!data || !data.channels) return;
+          var active = (data.channels || []).filter(function (c) { return c.is_active; });
+          self.channels = active;
+          if (self.chBtnEl) self.chBtnEl.style.display = active.length > 1 ? '' : 'none';
+        })
+        .catch(function () {});
     },
   };
 

@@ -14,6 +14,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 
+	"github.com/wuekevin/chatsphere/internal/bot"
 	"github.com/wuekevin/chatsphere/internal/cache"
 	"github.com/wuekevin/chatsphere/internal/config"
 	"github.com/wuekevin/chatsphere/internal/database"
@@ -103,9 +104,13 @@ func main() {
 	chSvc := service.NewChannelService(chRepo)
 	msgSvc := service.NewMessageService(msgRepo)
 
+	// Bot scheduler
+	botScheduler := bot.NewScheduler(db, registry)
+	botScheduler.Start()
+
 	handler.RegisterAuth(r, db, cfg)
 	handler.RegisterChat(r, chSvc, msgSvc, userRepo, registry, cfg)
-	handler.RegisterAdmin(r, db, rdb, cfg)
+	handler.RegisterAdmin(r, db, rdb, cfg, botScheduler)
 	handler.RegisterWidget(r, db, cfg)
 	handler.RegisterTelegram(r, tgSvc, cfg)
 

@@ -204,6 +204,12 @@ const L = {
     wgt_auto:'脚本标签嵌入（最简单）', wgt_manual:'手动初始化（更灵活）',
     wgt_preview:'实时预览', wgt_preview_desc:'该组件已在本页激活，可在对应位置找到聊天按钮。',
     copy:'复制', copied:'已复制！',
+    bots:'机器人', new_bot:'+ 新建机器人', bot_name:'机器人名称', bot_avatar:'头像颜色',
+    bot_channel:'绑定频道', bot_channel_all:'所有频道', bot_interval:'推送间隔（小时）',
+    bot_webhook:'Webhook URL', bot_tg_token:'Telegram Bot Token', bot_tg_chat:'Telegram Chat ID',
+    bot_active:'启用', bot_fire:'立即推送', new_bot_title:'新建机器人', edit_bot_title:'编辑机器人',
+    bot_fire_confirm:'立即推送？', no_bots:'暂无机器人', bot_last_fired:'上次推送',
+    bot_info:'机器人按设定间隔调用 Webhook 获取推荐内容并发送到频道。Webhook 需返回 JSON：{"cards":[{"title":"…","poster":"…","desc":"…","link":"…"}]}',
   },
   en: {
     app_title:'ChatSphere Admin', login_subtitle:'Sign in to manage your instance',
@@ -252,6 +258,12 @@ const L = {
     wgt_auto:'Script tag (simplest)', wgt_manual:'Manual init (more control)',
     wgt_preview:'Live Preview', wgt_preview_desc:'The widget is active on this page. Look for the chat button.',
     copy:'Copy', copied:'Copied!',
+    bots:'Bots', new_bot:'+ New Bot', bot_name:'Bot Name', bot_avatar:'Avatar Color',
+    bot_channel:'Channel', bot_channel_all:'All Channels', bot_interval:'Interval (hours)',
+    bot_webhook:'Webhook URL', bot_tg_token:'Telegram Bot Token', bot_tg_chat:'Telegram Chat ID',
+    bot_active:'Active', bot_fire:'Fire Now', new_bot_title:'New Bot', edit_bot_title:'Edit Bot',
+    bot_fire_confirm:'Fire this bot now?', no_bots:'No bots yet', bot_last_fired:'Last Fired',
+    bot_info:'Bots call a Webhook URL on a schedule and post recommendation cards to the channel. The webhook must return JSON: {"cards":[{"title":"…","poster":"…","desc":"…","link":"…"}]}',
   }
 }
 let lang = localStorage.getItem('cs_lang') || 'zh'
@@ -361,6 +373,7 @@ function showApp() {
       <a class="nav-item" onclick="show('users')"><svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg><span data-k="users"></span></a>
       <div class="nav-section" data-k="configure"></div>
       <a class="nav-item" onclick="show('widget')"><svg viewBox="0 0 24 24"><path d="M20.5 11H19V7c0-1.1-.9-2-2-2h-4V3.5C13 2.12 11.88 1 10.5 1S8 2.12 8 3.5V5H4c-1.1 0-1.99.9-1.99 2v3.8H3.5c1.49 0 2.7 1.21 2.7 2.7s-1.21 2.7-2.7 2.7H2V20c0 1.1.9 2 2 2h3.8v-1.5c0-1.49 1.21-2.7 2.7-2.7 1.49 0 2.7 1.21 2.7 2.7V22H17c1.1 0 2-.9 2-2v-4h1.5c1.38 0 2.5-1.12 2.5-2.5S21.88 11 20.5 11z"/></svg><span data-k="widget_embed"></span></a>
+      <a class="nav-item" onclick="show('bots')"><svg viewBox="0 0 24 24"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7H4a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2M7 14v2h2v-2H7m8 0v2h2v-2h-2M4 21v-1c0-2.21 3.58-4 8-4s8 1.79 8 4v1H4z"/></svg><span data-k="bots"></span></a>
     </nav>
     <div class="sidebar-footer">
       <div class="admin-pill">
@@ -422,12 +435,12 @@ window.addEventListener('DOMContentLoaded', async () => {
 function show(page) {
   state.currentPage = page
   document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'))
-  const map = {dashboard:0,channels:1,messages:2,reports:3,moderation:4,users:5,widget:6}
+  const map = {dashboard:0,channels:1,messages:2,reports:3,moderation:4,users:5,widget:6,bots:7}
   const items = document.querySelectorAll('.nav-item')
   if (items[map[page]] !== undefined) items[map[page]].classList.add('active')
-  const titleKeys = {dashboard:'dashboard',channels:'channels',messages:'messages',reports:'reports',moderation:'moderation',users:'users',widget:'widget_embed'}
+  const titleKeys = {dashboard:'dashboard',channels:'channels',messages:'messages',reports:'reports',moderation:'moderation',users:'users',widget:'widget_embed',bots:'bots'}
   document.getElementById('page-title').textContent = t(titleKeys[page] || page)
-  const fns = {dashboard:renderDashboard,channels:renderChannels,messages:renderMessages,reports:renderReports,moderation:renderModeration,users:renderUsers,widget:renderWidget}
+  const fns = {dashboard:renderDashboard,channels:renderChannels,messages:renderMessages,reports:renderReports,moderation:renderModeration,users:renderUsers,widget:renderWidget,bots:renderBots}
   if (fns[page]) fns[page]()
 }
 
@@ -896,6 +909,93 @@ async function saveBlockedWord() {
 async function deleteBlockedWord(id) {
   if (!confirm(t('remove_rule_confirm'))) return
   await api.del('/blocked-words/'+id); loadBlockedWords()
+}
+
+// ── Bots ──────────────────────────────────────────────────────────────────────
+let botsData = []
+async function renderBots() {
+  const data = await api.get('/bots')
+  botsData = data?.bots || []
+  const rows = botsData.map(b => `
+    <tr>
+      <td><strong>${esc(b.name)}</strong></td>
+      <td>${b.interval_hours}h</td>
+      <td><span style="font-size:11px;color:#6b7280;word-break:break-all">${esc(b.webhook_url)}</span></td>
+      <td>${b.last_fired_at ? new Date(b.last_fired_at).toLocaleString() : '-'}</td>
+      <td>${b.is_active?`<span class="badge badge-green">${t('active')}</span>`:`<span class="badge badge-gray">${t('inactive')}</span>`}</td>
+      <td class="actions-cell">
+        <button class="btn btn-outline btn-xs" onclick="editBot(${b.id})">${t('edit')}</button>
+        <button class="btn btn-xs" style="background:#dbeafe;color:#1e40af" onclick="fireBot(${b.id})">${t('bot_fire')}</button>
+        <button class="btn btn-xs" style="background:#fee2e2;color:#991b1b" onclick="deleteBot(${b.id})">${t('remove')}</button>
+      </td>
+    </tr>`).join('')
+  document.getElementById('content').innerHTML = `
+    <div class="notice notice-info" style="margin-bottom:16px">${t('bot_info')}</div>
+    <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
+      <button class="btn btn-primary" onclick="newBot()">${t('new_bot')}</button>
+    </div>
+    <div class="table-wrap">
+      <div class="table-header"><h3>${t('bots')}</h3></div>
+      <table>
+        <thead><tr><th>${t('bot_name')}</th><th>${t('bot_interval')}</th><th>${t('bot_webhook')}</th><th>${t('bot_last_fired')}</th><th>${t('status')}</th><th>${t('actions')}</th></tr></thead>
+        <tbody>${rows||emptyRow(6,t('no_bots'))}</tbody>
+      </table>
+    </div>`
+}
+
+function newBot() { openBotModal(null) }
+function editBot(id) { const b = botsData.find(x=>x.id===id); if(b) openBotModal(b) }
+async function deleteBot(id) {
+  if (!confirm(t('remove_rule_confirm'))) return
+  await api.del('/bots/'+id); renderBots()
+}
+async function fireBot(id) {
+  if (!confirm(t('bot_fire_confirm'))) return
+  await api.post('/bots/'+id+'/fire'); renderBots()
+}
+
+function openBotModal(b) {
+  const isEdit = !!b
+  const chOpts = state.channels.map(c=>`<option value="${c.id}" ${b?.channel_id===c.id?'selected':''}>${esc(c.name)}</option>`).join('')
+  modal(`<h3>${isEdit?t('edit_bot_title'):t('new_bot_title')}</h3>
+    <div class="form-row-2">
+      <div class="form-group"><label>${t('bot_name')}</label><input id="bm-name" value="${esc(b?.name||'')}"></div>
+      <div class="form-group"><label>${t('bot_interval')}</label><input id="bm-interval" type="number" min="1" value="${b?.interval_hours||6}"></div>
+    </div>
+    <div class="form-group"><label>${t('bot_webhook')}</label><input id="bm-webhook" value="${esc(b?.webhook_url||'')}" placeholder="https://example.com/api/recommend"></div>
+    <div class="form-group"><label>${t('bot_channel')}</label>
+      <select id="bm-channel">
+        <option value="">${t('bot_channel_all')}</option>
+        ${chOpts}
+      </select>
+    </div>
+    <div class="form-row-2">
+      <div class="form-group"><label>${t('bot_avatar')}</label><input id="bm-avatar" value="${esc(b?.avatar_color||'#6366f1')}" placeholder="#6366f1"></div>
+    </div>
+    <div class="form-group"><label>${t('bot_tg_token')} <small style="color:#6b7280">(可选)</small></label><input id="bm-tg-token" value="${esc(b?.telegram_token||'')}"></div>
+    <div class="form-group"><label>${t('bot_tg_chat')} <small style="color:#6b7280">(可选)</small></label><input id="bm-tg-chat" value="${esc(b?.telegram_chat_id||'')}"></div>
+    <div class="toggle-row"><span>${t('bot_active')}</span><label class="toggle"><input type="checkbox" id="bm-active" ${b?.is_active!==false?'checked':''}><span class="slider"></span></label></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal()">${t('cancel')}</button>
+      <button class="btn btn-primary" onclick="saveBot(${b?.id||0})">${t('save')}</button>
+    </div>`)
+}
+
+async function saveBot(id) {
+  const body = {
+    name: document.getElementById('bm-name').value.trim(),
+    interval_hours: +document.getElementById('bm-interval').value || 6,
+    webhook_url: document.getElementById('bm-webhook').value.trim(),
+    channel_id: document.getElementById('bm-channel').value ? +document.getElementById('bm-channel').value : null,
+    avatar_color: document.getElementById('bm-avatar').value.trim(),
+    telegram_token: document.getElementById('bm-tg-token').value.trim(),
+    telegram_chat_id: document.getElementById('bm-tg-chat').value.trim(),
+    is_active: document.getElementById('bm-active').checked,
+  }
+  if (!body.name || !body.webhook_url) return
+  if (id) await api.put('/bots/'+id, body)
+  else await api.post('/bots', body)
+  closeModal(); renderBots()
 }
 </script>
 </body>
