@@ -207,12 +207,50 @@ func (c *Client) handleSend(content string) {
 	// Notify any @mentioned users who are online in this channel.
 	go c.hub.detectAndNotifyMentions(record.Content, record, c.userID)
 
-	// Increment reputation for registered users (+1 per message sent).
+	// Increment XP for registered users, with anti-grind rate limiting.
 	if !c.isAnonymous && c.userID != nil {
-		c.reputation++
-		c.hub.db.Model(&model.User{}).Where("id = ?", *c.userID).
-			UpdateColumn("reputation", gorm.Expr("reputation + 1"))
+		go c.tryGainXP()
 	}
+}
+
+const (
+	xpCooldown = 5 * time.Minute // minimum gap between XP gains
+	xpDailyMax = 20              // max XP per user per UTC day
+)
+
+// tryGainXP awards +1 XP if the user hasn't hit the cooldown or daily cap.
+// Two Redis keys guard against grinding:
+//   - xp_cd:{uid}   — set with 5-min TTL on each gain; skip if present
+//   - xp_day:{uid}:{date} — counter capped at xpDailyMax; TTL 25h
+func (c *Client) tryGainXP() {
+	ctx := context.Background()
+	uid := *c.userID
+	rdb := c.hub.redis
+
+	cdKey := fmt.Sprintf("chatsphere:xp_cd:%d", uid)
+	dayKey := fmt.Sprintf("chatsphere:xp_day:%d:%s", uid, time.Now().UTC().Format("2006-01-02"))
+
+	// Cooldown check: SET NX with TTL — returns true only if key didn't exist
+	ok, err := rdb.SetNX(ctx, cdKey, 1, xpCooldown).Result()
+	if err != nil || !ok {
+		return // Redis error or cooldown active
+	}
+
+	// Daily cap check
+	daily, err := rdb.Incr(ctx, dayKey).Result()
+	if err != nil {
+		return
+	}
+	if daily == 1 {
+		rdb.Expire(ctx, dayKey, 25*time.Hour) // expire well after day rolls over
+	}
+	if daily > int64(xpDailyMax) {
+		return // cap reached today
+	}
+
+	c.reputation++
+	c.hub.db.Model(&model.User{}).Where("id = ?", uid).
+		UpdateColumn("reputation", gorm.Expr("reputation + 1"))
 }
 
 func (c *Client) handleDM(toUserID uint64, content string) {
