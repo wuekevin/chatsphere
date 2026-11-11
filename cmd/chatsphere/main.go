@@ -106,7 +106,7 @@ func main() {
 	handler.RegisterAuth(r, db, cfg)
 	handler.RegisterChat(r, chSvc, msgSvc, userRepo, registry, cfg)
 	handler.RegisterAdmin(r, db, rdb, cfg)
-	handler.RegisterWidget(r, cfg)
+	handler.RegisterWidget(r, db, cfg)
 	handler.RegisterTelegram(r, tgSvc, cfg)
 
 	// Redirect root to admin panel

@@ -1,12 +1,17 @@
 package handler
 
 import (
+	"bytes"
+	"fmt"
 	"io/fs"
 	"net/http"
+	"regexp"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
+	"github.com/tdewolff/minify/v2"
+	jsminify "github.com/tdewolff/minify/v2/js"
 	"gorm.io/gorm"
 
 	"github.com/wuekevin/chatsphere/internal/config"
@@ -46,10 +51,14 @@ func RegisterAdmin(r *gin.Engine, db *gorm.DB, rdb *redis.Client, cfg *config.Co
 	admin.GET("/blocked-words", adminListBlockedWords(db))
 	admin.POST("/blocked-words", adminCreateBlockedWord(db))
 	admin.DELETE("/blocked-words/:id", adminDeleteBlockedWord(db))
+
+	// Embed config
+	admin.GET("/embed-config", getEmbedConfig(db))
+	admin.PUT("/embed-config", saveEmbedConfig(db))
 }
 
 // RegisterWidget serves the admin SPA and the embeddable widget files.
-func RegisterWidget(r *gin.Engine, cfg *config.Config) {
+func RegisterWidget(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	// Admin SPA — single index.html embedded in binary.
 	// Use exact routes only: a wildcard under cfg.Admin.Path conflicts with
 	// the /api sub-routes registered by RegisterAdmin in gin's radix tree.
@@ -59,6 +68,10 @@ func RegisterWidget(r *gin.Engine, cfg *config.Config) {
 	}
 	r.GET(cfg.Admin.Path, serveAdmin)
 	r.GET(cfg.Admin.Path+"/", serveAdmin)
+
+	// Dynamic widget JS (minified + config-baked). Must register before StaticFS
+	// so this exact route takes priority over the static file handler.
+	r.GET("/widget/chatsphere.js", serveWidgetJS(db))
 
 	// Widget assets — embedded in binary so the production binary is self-contained.
 	widgetSub, _ := fs.Sub(web.WidgetFS, "widget")
@@ -345,5 +358,82 @@ func adminDeleteBlockedWord(db *gorm.DB) gin.HandlerFunc {
 		id, _ := strconv.ParseUint(c.Param("id"), 10, 64)
 		db.Model(&model.BlockedWord{}).Where("id = ?", id).Update("is_active", false)
 		c.JSON(http.StatusOK, gin.H{"ok": true})
+	}
+}
+
+// --- Embed Config ---
+
+func getEmbedConfig(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var cfg model.EmbedConfig
+		db.FirstOrCreate(&cfg, model.EmbedConfig{ID: 1})
+		c.JSON(http.StatusOK, gin.H{"config": cfg})
+	}
+}
+
+func saveEmbedConfig(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var body model.EmbedConfig
+		if err := c.ShouldBindJSON(&body); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		body.ID = 1
+		if err := db.Save(&body).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "save failed"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"config": body})
+	}
+}
+
+var jsMinifier = func() *minify.M {
+	m := minify.New()
+	m.AddFuncRegexp(regexp.MustCompile("^application/javascript$"), jsminify.Minify)
+	return m
+}()
+
+func serveWidgetJS(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		raw, err := web.WidgetFS.ReadFile("widget/chatsphere.js")
+		if err != nil {
+			c.Status(http.StatusInternalServerError)
+			return
+		}
+
+		var cfg model.EmbedConfig
+		db.FirstOrCreate(&cfg, model.EmbedConfig{ID: 1})
+
+		serverURL := cfg.ServerURL
+		if serverURL == "" {
+			scheme := "http"
+			if c.Request.TLS != nil {
+				scheme = "https"
+			}
+			serverURL = fmt.Sprintf("%s://%s", scheme, c.Request.Host)
+		}
+
+		snippet := fmt.Sprintf(
+			"\n;(function(){ChatSphere.init({server:%q,channel:%q,position:%q,offset:%d,title:%q,notice:%q,accent:%q,lang:%q});}());\n",
+			serverURL,
+			cfg.Channel,
+			cfg.Position,
+			cfg.Offset,
+			cfg.Title,
+			cfg.Notice,
+			cfg.AccentColor,
+			cfg.Lang,
+		)
+
+		combined := append(raw, []byte(snippet)...)
+
+		var buf bytes.Buffer
+		if err := jsMinifier.Minify("application/javascript", &buf, bytes.NewReader(combined)); err != nil {
+			c.Data(http.StatusOK, "application/javascript; charset=utf-8", combined)
+			return
+		}
+
+		c.Header("Cache-Control", "public, max-age=300")
+		c.Data(http.StatusOK, "application/javascript; charset=utf-8", buf.Bytes())
 	}
 }
