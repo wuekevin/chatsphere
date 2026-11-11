@@ -1137,6 +1137,13 @@
           }
           break;
 
+        case 'message_deleted':
+          if (evt.message_id) {
+            var delEl = this.msgs.querySelector('[data-msgid="' + evt.message_id + '"]');
+            if (delEl) delEl.remove();
+          }
+          break;
+
         case 'mention':
           // Another user @mentioned this user in this channel.
           if (evt.message) {

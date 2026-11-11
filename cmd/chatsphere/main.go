@@ -110,7 +110,7 @@ func main() {
 
 	handler.RegisterAuth(r, db, cfg)
 	handler.RegisterChat(r, chSvc, msgSvc, userRepo, registry, cfg)
-	handler.RegisterAdmin(r, db, rdb, cfg, botScheduler)
+	handler.RegisterAdmin(r, db, rdb, cfg, botScheduler, registry)
 	handler.RegisterWidget(r, db, cfg)
 	handler.RegisterTelegram(r, tgSvc, cfg)
 

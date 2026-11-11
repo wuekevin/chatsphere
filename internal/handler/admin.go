@@ -18,11 +18,12 @@ import (
 	"github.com/wuekevin/chatsphere/internal/config"
 	"github.com/wuekevin/chatsphere/internal/middleware"
 	"github.com/wuekevin/chatsphere/internal/model"
+	"github.com/wuekevin/chatsphere/internal/ws"
 	"github.com/wuekevin/chatsphere/web"
 )
 
 // RegisterAdmin wires admin API routes (all require admin role).
-func RegisterAdmin(r *gin.Engine, db *gorm.DB, rdb *redis.Client, cfg *config.Config, scheduler *bot.Scheduler) {
+func RegisterAdmin(r *gin.Engine, db *gorm.DB, rdb *redis.Client, cfg *config.Config, scheduler *bot.Scheduler, hubReg *ws.HubRegistry) {
 	admin := r.Group(cfg.Admin.Path+"/api", middleware.AdminOnly(cfg.Server.SecretKey))
 
 	// Dashboard stats
@@ -36,7 +37,7 @@ func RegisterAdmin(r *gin.Engine, db *gorm.DB, rdb *redis.Client, cfg *config.Co
 
 	// Messages
 	admin.GET("/messages", adminListMessages(db))
-	admin.DELETE("/messages/:id", adminDeleteMessage(db))
+	admin.DELETE("/messages/:id", adminDeleteMessage(db, rdb, hubReg))
 
 	// Users
 	admin.GET("/users", adminListUsers(db))
@@ -239,10 +240,31 @@ func adminListMessages(db *gorm.DB) gin.HandlerFunc {
 	}
 }
 
-func adminDeleteMessage(db *gorm.DB) gin.HandlerFunc {
+func adminDeleteMessage(db *gorm.DB, rdb *redis.Client, hubReg *ws.HubRegistry) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id, _ := strconv.ParseUint(c.Param("id"), 10, 64)
+
+		// Fetch the message first to know which channel it belongs to.
+		var msg model.Message
+		if err := db.First(&msg, id).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+			return
+		}
+
 		db.Model(&model.Message{}).Where("id = ?", id).Update("is_deleted", true)
+
+		// Purge the Redis history cache for this channel so new connections
+		// don't receive the deleted message from the cache.
+		cacheKey := fmt.Sprintf("chatsphere:channel:%d:messages", msg.ChannelID)
+		rdb.Del(c.Request.Context(), cacheKey)
+
+		// Broadcast a real-time deletion event to all connected clients in the channel.
+		var ch model.Channel
+		if err := db.First(&ch, msg.ChannelID).Error; err == nil {
+			hub := hubReg.GetOrCreate(ch.Slug, ch.ID)
+			hub.BroadcastJSON(ws.Event{Type: "message_deleted", MessageID: id})
+		}
+
 		c.JSON(http.StatusOK, gin.H{"ok": true})
 	}
 }
