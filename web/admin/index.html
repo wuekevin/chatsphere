@@ -226,7 +226,7 @@ textarea{resize:vertical;min-height:80px}
 
 <script>
 // ── State ─────────────────────────────────────────────────────────────────────
-const state = { token: null, user: null, channels: [], currentPage: 'dashboard' }
+const state = { token: null, user: null, channels: [], currentPage: 'dashboard', statsTimer: null }
 
 // ── API ───────────────────────────────────────────────────────────────────────
 const api = {
@@ -270,6 +270,7 @@ async function doLogin() {
 
 function logout() {
   state.token = null; state.user = null
+  if (state.statsTimer) { clearInterval(state.statsTimer); state.statsTimer = null }
   localStorage.removeItem('cs_admin_token')
   document.getElementById('sidebar').style.display = 'none'
   document.getElementById('app-shell').style.display = 'none'
@@ -287,6 +288,8 @@ function showApp() {
   }
   show('dashboard')
   loadStats()
+  if (state.statsTimer) clearInterval(state.statsTimer)
+  state.statsTimer = setInterval(loadStats, 30000)
 }
 
 // Auto-login from localStorage
@@ -345,7 +348,6 @@ function renderDashboard() {
     <div class="notice notice-info">
       <strong>Quick Start:</strong> Add the widget to any page by going to <a href="#" onclick="show('widget')" style="color:#1d4ed8;font-weight:600">Widget & Embed</a> and copying the embed code.
     </div>`
-  loadStats()
 }
 
 // ── Channels ──────────────────────────────────────────────────────────────────
