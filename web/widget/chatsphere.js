@@ -223,10 +223,17 @@
       '  animation:cs-fadein .2s ease;',
       '}',
       '[data-cs="msg"][data-mine]{flex-direction:row-reverse}',
+      '[data-cs="avatar-wrap"]{position:relative;flex-shrink:0;width:34px;height:34px}',
       '[data-cs="avatar"]{',
-      '  width:34px;height:34px;min-width:34px;border-radius:50%;flex-shrink:0;',
+      '  width:34px;height:34px;border-radius:50%;',
       '  display:flex;align-items:center;justify-content:center;',
       '  font-size:12px;font-weight:700;color:#fff;',
+      '}',
+      '[data-cs="flag-corner"]{',
+      '  position:absolute;bottom:-1px;right:-1px;',
+      '  font-size:10px;line-height:1;',
+      '  background:var(--surface);border-radius:50%;',
+      '  width:15px;height:15px;display:flex;align-items:center;justify-content:center;',
       '}',
       '[data-cs="msg-wrap"]{display:flex;flex-direction:column;max-width:75%;min-width:0}',
       '[data-cs="msg"][data-mine] [data-cs="msg-wrap"]{align-items:flex-end}',
@@ -238,7 +245,7 @@
       '[data-cs="name"]{font-size:12px;font-weight:600;color:var(--fg)}',
       '[data-cs="name"].cs-anon{color:var(--muted);font-weight:500}',
       '[data-cs="time"]{font-size:11px;color:var(--muted)}',
-      '[data-cs="flag"]{font-size:12px;line-height:1}',
+      '[data-cs="flag"]{font-size:10px;line-height:1;opacity:.5}',
       '[data-cs="bubble"]{',
       '  padding:8px 12px;font-size:13px;line-height:1.55;word-break:break-word;',
       '  background:var(--surface-2);color:var(--fg);',
@@ -1200,9 +1207,16 @@
       var name  = msg.display_name || 'Guest';
       var color = msg.avatar_color || hashColor(name);
 
-      // Avatar
+      // Avatar wrapper + flag corner
+      var avatarWrap = cs('avatar-wrap');
       var avatarEl = cs('avatar', { style: 'background:' + color });
       avatarEl.textContent = initials(name);
+      avatarWrap.appendChild(avatarEl);
+      if (msg.country) {
+        var flagCorner = cs('flag-corner');
+        flagCorner.textContent = flagEmoji(msg.country);
+        avatarWrap.appendChild(flagCorner);
+      }
 
       // Meta (name + time)
       var metaEl = cs('msg-meta');
@@ -1250,7 +1264,7 @@
       var wrapper = cs('msg');
       if (msg.id) wrapper.setAttribute('data-msgid', msg.id);
       if (mine)   wrapper.setAttribute('data-mine', '');
-      wrapper.appendChild(avatarEl);
+      wrapper.appendChild(avatarWrap);
       wrapper.appendChild(msgWrap);
 
       this.msgs.appendChild(wrapper);
