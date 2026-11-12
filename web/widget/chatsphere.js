@@ -2091,6 +2091,8 @@
     },
 
     _showWelcome: function (msg) {
+      // Don't overlay if messages are already rendered
+      if (this.msgs && this.msgs.children.length > 0) return;
       var wrap  = h('div', { 'data-cs': 'welcome-msg' });
       var inner = h('div', { 'data-cs': 'welcome-msg-inner', 'text': msg });
       wrap.appendChild(inner);
