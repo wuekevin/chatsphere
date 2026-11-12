@@ -376,6 +376,14 @@ func (h *Hub) detectAndNotifyMentions(content string, msg *model.Message, sender
 	}
 }
 
+// InvalidateBlockedCache resets the blocked-word cache TTL so the next
+// SanitizeBlocked call reloads from the database immediately.
+func (h *Hub) InvalidateBlockedCache() {
+	h.blockedMu.Lock()
+	h.blockedLoadedAt = time.Time{}
+	h.blockedMu.Unlock()
+}
+
 // loadBlockedPatterns queries the DB and rebuilds the in-memory cache.
 // Every pattern (regex or plain) is compiled to a *regexp.Regexp for uniform replace.
 func (h *Hub) loadBlockedPatterns() {

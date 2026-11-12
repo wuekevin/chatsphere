@@ -52,8 +52,8 @@ func RegisterAdmin(r *gin.Engine, db *gorm.DB, rdb *redis.Client, cfg *config.Co
 
 	// Blocked words (content moderation)
 	admin.GET("/blocked-words", adminListBlockedWords(db))
-	admin.POST("/blocked-words", adminCreateBlockedWord(db))
-	admin.DELETE("/blocked-words/:id", adminDeleteBlockedWord(db))
+	admin.POST("/blocked-words", adminCreateBlockedWord(db, hubReg))
+	admin.DELETE("/blocked-words/:id", adminDeleteBlockedWord(db, hubReg))
 
 	admin.GET("/allowed-domains", adminListAllowedDomains(db))
 	admin.POST("/allowed-domains", adminCreateAllowedDomain(db))
@@ -373,7 +373,7 @@ func adminListBlockedWords(db *gorm.DB) gin.HandlerFunc {
 	}
 }
 
-func adminCreateBlockedWord(db *gorm.DB) gin.HandlerFunc {
+func adminCreateBlockedWord(db *gorm.DB, hubReg *ws.HubRegistry) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var body struct {
 			ChannelID *uint64 `json:"channel_id"`
@@ -394,14 +394,16 @@ func adminCreateBlockedWord(db *gorm.DB) gin.HandlerFunc {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create"})
 			return
 		}
+		hubReg.InvalidateBlockedCacheAll()
 		c.JSON(http.StatusCreated, gin.H{"blocked_word": word})
 	}
 }
 
-func adminDeleteBlockedWord(db *gorm.DB) gin.HandlerFunc {
+func adminDeleteBlockedWord(db *gorm.DB, hubReg *ws.HubRegistry) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id, _ := strconv.ParseUint(c.Param("id"), 10, 64)
 		db.Model(&model.BlockedWord{}).Where("id = ?", id).Update("is_active", false)
+		hubReg.InvalidateBlockedCacheAll()
 		c.JSON(http.StatusOK, gin.H{"ok": true})
 	}
 }

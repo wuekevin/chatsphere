@@ -107,6 +107,15 @@ func (r *HubRegistry) BroadcastAll(evt Event) {
 	})
 }
 
+// InvalidateBlockedCacheAll resets the blocked-word cache on every active hub,
+// forcing a DB reload on the next message through each hub.
+func (r *HubRegistry) InvalidateBlockedCacheAll() {
+	r.hubs.Range(func(_, v any) bool {
+		v.(*Hub).InvalidateBlockedCache()
+		return true
+	})
+}
+
 // BroadcastToChannel broadcasts to the hub identified by channelID (if active).
 func (r *HubRegistry) BroadcastToChannel(channelID uint64, evt Event) {
 	if v, ok := r.channelHubs.Load(channelID); ok {
