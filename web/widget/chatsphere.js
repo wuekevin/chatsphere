@@ -100,6 +100,35 @@
       '[data-cs="dm-badge"].cs-vis{display:flex}',
       '[data-cs="btn"].cs-open [data-cs="dm-badge"]{display:none!important}',
 
+      /* ── Notification bubble card (B plan — when unread) ── */
+      '@keyframes cs-notif-in{from{opacity:0;transform:translateX(16px) scale(.92)}to{opacity:1;transform:none}}',
+      '[data-cs="btn"].cs-notif{',
+      '  width:auto;max-width:240px;border-radius:30px;',
+      '  background:var(--surface);border:1px solid var(--border);',
+      '  box-shadow:0 4px 24px rgba(0,0,0,.18);padding:7px 14px 7px 7px;gap:10px;',
+      '  animation:cs-notif-in .3s cubic-bezier(.34,1.56,.64,1) both;',
+      '}',
+      '[data-cs="btn"].cs-notif::before{animation:none;opacity:0}',
+      '[data-cs="btn"].cs-notif:hover{box-shadow:0 6px 30px rgba(0,0,0,.24)}',
+      '[data-cs="btn"].cs-notif [data-cs="btn-icon"]{',
+      '  width:42px;height:42px;border-radius:50%;background:var(--accent);flex-shrink:0;',
+      '}',
+      '[data-cs="btn"].cs-notif [data-cs="btn-info"]{',
+      '  display:flex;flex-direction:column;align-items:flex-start;min-width:0;flex:1;',
+      '}',
+      '[data-cs="btn"].cs-notif [data-cs="btn-title"]{',
+      '  display:block;color:var(--fg);font-size:13px;font-weight:700;line-height:1.3;',
+      '  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;',
+      '}',
+      '[data-cs="btn"].cs-notif [data-cs="btn-preview"]{',
+      '  display:block;color:var(--muted);font-size:11px;line-height:1.4;margin-top:1px;',
+      '  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;',
+      '}',
+      '[data-cs="btn"].cs-notif [data-cs="badge"]{',
+      '  min-width:9px;width:9px;height:9px;border-radius:50%;',
+      '  font-size:0;padding:0;top:5px;right:5px;border-width:1.5px;',
+      '}',
+
       /* ── Panel ── */
       '[data-cs="panel"]{',
       '  position:absolute;bottom:calc(var(--btn) + 14px);',
@@ -1657,6 +1686,7 @@
       this.btn.classList.toggle('cs-open', this.isOpen);
       this.btn.setAttribute('aria-expanded', this.isOpen ? 'true' : 'false');
       if (this.isOpen) {
+        this.btn.classList.remove('cs-notif');
         this._clearUnread();
         this._scrollBottom();
         var el = this.inputEl;
@@ -1795,6 +1825,7 @@
     // ── Unread ────────────────────────────────────────────────────────────────
 
     _incUnread: function (msg) {
+      var wasZero = this.unread === 0;
       this.unread++;
       this.badge.style.display = 'flex';
       this.badge.textContent = this.unread > 9 ? '9+' : this.unread;
@@ -1803,6 +1834,8 @@
         var text = (msg.content || '').replace(/<[^>]*>/g, '').substring(0, 40);
         this.btnPreviewEl.textContent = sender ? sender + ': ' + text : text;
       }
+      // Switch to notification bubble card on first unread
+      if (wasZero && this.btn) this.btn.classList.add('cs-notif');
       this._playNotifSound();
     },
 
@@ -1829,6 +1862,7 @@
     _clearUnread: function () {
       this.unread = 0;
       this.badge.style.display = 'none';
+      if (this.btn) this.btn.classList.remove('cs-notif');
       if (this.btnPreviewEl) {
         this._lastPreview = this.btnPreviewEl.textContent;
         this.btnPreviewEl.textContent = '';
