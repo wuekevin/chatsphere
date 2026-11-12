@@ -233,15 +233,16 @@
       '[data-cs="msg"][data-mine]{flex-direction:row-reverse}',
       '[data-cs="avatar-wrap"]{position:relative;flex-shrink:0;width:34px;height:34px}',
       '[data-cs="avatar"]{',
-      '  width:34px;height:34px;border-radius:50%;',
+      '  width:34px;height:34px;border-radius:50%;overflow:hidden;',
       '  display:flex;align-items:center;justify-content:center;',
       '  font-size:12px;font-weight:700;color:#fff;',
       '}',
       '[data-cs="flag-corner"]{',
-      '  position:absolute;bottom:-1px;right:-1px;',
-      '  font-size:10px;line-height:1;',
-      '  background:var(--surface);border-radius:50%;',
-      '  width:15px;height:15px;display:flex;align-items:center;justify-content:center;',
+      '  position:absolute;bottom:-2px;right:-2px;',
+      '  font-size:12px;line-height:1;',
+      '  font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif;',
+      '  background:var(--surface);border-radius:50%;border:1px solid var(--border);',
+      '  width:18px;height:18px;display:flex;align-items:center;justify-content:center;',
       '}',
       '[data-cs="msg-wrap"]{display:flex;flex-direction:column;max-width:75%;min-width:0}',
       '[data-cs="msg"][data-mine] [data-cs="msg-wrap"]{align-items:flex-end}',
@@ -580,8 +581,40 @@
   }
 
   function flagEmoji(cc) {
-    if (!cc || cc.length !== 2) return '';
-    return String.fromCodePoint(cc.charCodeAt(0) + 127397, cc.charCodeAt(1) + 127397);
+    if (!cc || cc.length !== 2) return cc || '';
+    // Try Unicode Regional Indicator chars; they render as flags on most modern platforms.
+    try { return String.fromCodePoint(cc.charCodeAt(0) + 127397, cc.charCodeAt(1) + 127397); } catch (_) { return cc; }
+  }
+
+  // Generate a 5×5 symmetric SVG identicon for a user seed + accent color.
+  function generateIdenticon(seed, color) {
+    var n = 0;
+    for (var i = 0; i < seed.length; i++) n = ((n << 5) - n + seed.charCodeAt(i)) | 0;
+    var cells = [];
+    for (var i = 0; i < 15; i++) {
+      n = (Math.imul(1664525, n) + 1013904223) | 0;
+      cells.push(!!(n & 0x80000000));
+    }
+    var rects = '';
+    for (var row = 0; row < 5; row++) {
+      for (var col = 0; col < 5; col++) {
+        var c = col > 2 ? 4 - col : col;
+        if (cells[row * 3 + c]) {
+          rects += '<rect x="' + (col * 10 + 1) + '" y="' + (row * 10 + 1) + '" width="8" height="8" rx="1.5"/>';
+        }
+      }
+    }
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52"><rect width="52" height="52" fill="' + color + '" opacity=".12"/><g fill="' + color + '">' + rects + '</g></svg>';
+    return 'data:image/svg+xml,' + encodeURIComponent(svg);
+  }
+
+  // Create an avatar <img> element showing the identicon.
+  function makeAvatarImg(seed, color) {
+    var img = document.createElement('img');
+    img.src = generateIdenticon(seed || 'guest', color);
+    img.style.cssText = 'width:100%;height:100%;display:block;';
+    img.setAttribute('aria-hidden', 'true');
+    return img;
   }
 
   function hashColor(seed) {
@@ -1269,8 +1302,9 @@
 
       // Avatar wrapper + flag corner
       var avatarWrap = cs('avatar-wrap');
-      var avatarEl = cs('avatar', { style: 'background:' + color });
-      avatarEl.textContent = initials(name);
+      var avatarEl = cs('avatar');
+      var idSeed = (msg.user_id ? String(msg.user_id) : name) + (msg.country || '');
+      avatarEl.appendChild(makeAvatarImg(idSeed, color));
       avatarWrap.appendChild(avatarEl);
       if (msg.country) {
         var flagCorner = cs('flag-corner');
@@ -1912,8 +1946,9 @@
       userIds.forEach(function (uid) {
         var conv = self.dmConvs[uid];
         var item = cs('dm-item');
-        var av = cs('dm-item-av', { style: 'background:' + (conv.avatarColor || hashColor(String(uid))) });
-        av.textContent = initials(conv.username);
+        var av = cs('dm-item-av', { style: 'background:transparent;overflow:hidden' });
+        var _avColor = conv.avatarColor || hashColor(String(uid));
+        av.appendChild(makeAvatarImg(String(uid) + (conv.username || ''), _avColor));
         var info = cs('dm-item-info');
         var nameEl = cs('dm-item-name'); nameEl.textContent = conv.username;
         var preview = cs('dm-item-preview');
@@ -2054,8 +2089,8 @@
 
       var hdr = h('div', { 'data-cs': 'bot-card-hdr' });
       var av = h('div', { 'data-cs': 'bot-card-av' });
-      av.style.background = avatarColor || '#6366f1';
-      av.textContent = initials(botName);
+      av.style.cssText = 'overflow:hidden';
+      av.appendChild(makeAvatarImg('bot_' + botName, avatarColor || '#6366f1'));
       var nameEl = h('div', { 'data-cs': 'bot-card-name', 'text': botName });
       hdr.appendChild(av);
       hdr.appendChild(nameEl);
