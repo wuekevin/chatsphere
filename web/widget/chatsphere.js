@@ -1861,7 +1861,7 @@
 
       if (!mine) {
         var _name = msg.display_name || 'Guest';
-        item(atIcon, self.wt('ctx_at') + ' ' + _name, function () {
+        item(atIcon, '@TA', function () {
           var el = self.inputEl;
           var val = el.value;
           var at = '@' + _name + ' ';
@@ -1904,6 +1904,7 @@
       menu.style.top  = Math.min(y, vh - mh - 8) + 'px';
 
       var _dismiss = function () { self._dismissCtxMenu(); };
+      self._ctxDismiss = _dismiss;
       setTimeout(function () {
         document.addEventListener('click', _dismiss, { once: true });
         document.addEventListener('contextmenu', _dismiss, { once: true });
@@ -1912,6 +1913,11 @@
 
     _dismissCtxMenu: function () {
       if (this._ctxMenu) { this._ctxMenu.remove(); this._ctxMenu = null; }
+      if (this._ctxDismiss) {
+        document.removeEventListener('click', this._ctxDismiss);
+        document.removeEventListener('contextmenu', this._ctxDismiss);
+        this._ctxDismiss = null;
+      }
     },
 
     _report: function (msgId) {
