@@ -1,14 +1,6 @@
 /*!
  * ChatSphere Widget v1.0.0
  * Zero-dependency embeddable chat — single file, all styles inlined.
- *
- * Usage (script tag):
- *   <script src="/widget/chatsphere.js"
- *           data-server="https://your-domain.com"
- *           data-channel="general"></script>
- *
- * Usage (manual init):
- *   ChatSphere.init({ server: '...', channel: 'general' })
  */
 (function (global) {
   'use strict';
