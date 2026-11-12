@@ -154,9 +154,6 @@ func (c *Client) handleSend(content string) {
 		c.sendError(fmt.Sprintf("Message exceeds %d characters.", maxLen))
 		return
 	}
-	// Sanitize blocked words before HTML escaping (escaping expands some bytes).
-	content = c.hub.SanitizeBlocked(content)
-
 	// Reject links to non-whitelisted domains (when whitelist is configured).
 	if !c.hub.CheckURLAllowed(content) {
 		c.sendError("Links to this domain are not allowed.")
@@ -201,9 +198,12 @@ func (c *Client) handleSend(content string) {
 		return
 	}
 
+	// Broadcast with blocked words censored; DB record keeps the original text.
+	broadcastMsg := *record
+	broadcastMsg.Content = c.hub.SanitizeBlocked(record.Content)
 	c.hub.BroadcastJSON(Event{
 		Type:    "message",
-		Message: record,
+		Message: &broadcastMsg,
 	})
 
 	// Notify any @mentioned users who are online in this channel.
