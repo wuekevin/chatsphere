@@ -205,10 +205,11 @@ func issueToken(user *model.User, secret string) (string, error) {
 }
 
 // detectCountryHeader is a header-only country detection (no config) used at registration.
+// It checks the same default headers as detectCountry in chat.go.
 func detectCountryHeader(c *gin.Context) string {
-	for _, h := range []string{"CF-IPCountry", "X-Country"} {
-		if v := c.GetHeader(h); len(v) == 2 {
-			return strings.ToUpper(v)
+	for _, h := range []string{"CF-IPCountry", "Smart-Country-Region", "EO-Client-Country-Region", "X-Country"} {
+		if cc := extractCountryCode(c.GetHeader(h)); cc != "" {
+			return cc
 		}
 	}
 	al := c.GetHeader("Accept-Language")

@@ -175,7 +175,8 @@ func getMessagesHandler(chSvc *service.ChannelService, msgSvc *service.MessageSe
 // anonName returns a stable display name from an 8-hex-char anonID.
 // 20 adjectives × 20 nouns = 400 possible names.
 // detectCountry reads the visitor's ISO-3166-1 alpha-2 country code from the
-// first configured header that returns a 2-character value.
+// first configured header that returns a usable value.
+// Accepts plain 2-letter codes ("CN") and region-suffixed codes ("CN-BJ").
 // Falls back to CF-IPCountry then X-Country, then Accept-Language as a hint.
 func detectCountry(c *gin.Context, cfg *config.Config) string {
 	hdrs := cfg.Server.CountryHeaders
@@ -183,8 +184,8 @@ func detectCountry(c *gin.Context, cfg *config.Config) string {
 		hdrs = []string{"CF-IPCountry", "X-Country"}
 	}
 	for _, h := range hdrs {
-		if v := c.GetHeader(h); len(v) == 2 {
-			return strings.ToUpper(v)
+		if cc := extractCountryCode(c.GetHeader(h)); cc != "" {
+			return cc
 		}
 	}
 	// Best-effort: extract region subtag from Accept-Language (e.g. "zh-CN" → "CN").
@@ -198,6 +199,24 @@ func detectCountry(c *gin.Context, cfg *config.Config) string {
 				return cc
 			}
 		}
+	}
+	return ""
+}
+
+// extractCountryCode normalises a CDN header value to an uppercase ISO-3166-1
+// alpha-2 code. It handles:
+//   - Plain 2-letter codes:          "CN"   → "CN"
+//   - Region-suffixed codes:         "CN-BJ" → "CN"
+//   - Values with trailing whitespace or newlines
+func extractCountryCode(v string) string {
+	v = strings.TrimSpace(v)
+	if len(v) == 0 {
+		return ""
+	}
+	// Take the part before the first hyphen; some CDNs append a region/province.
+	country := strings.ToUpper(strings.SplitN(v, "-", 2)[0])
+	if len(country) == 2 {
+		return country
 	}
 	return ""
 }
