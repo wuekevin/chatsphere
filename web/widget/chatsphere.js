@@ -273,7 +273,7 @@
       '[data-cs="bubble-row"]{display:flex;align-items:center;gap:6px}',
       '[data-cs="msg-actions"]{display:flex;gap:6px;opacity:0;transition:opacity .15s;flex-shrink:0}',
       '[data-cs="msg"]:hover [data-cs="msg-actions"]{opacity:1}',
-      '[data-cs="report-btn"],[data-cs="dm-msg-btn"]{font-size:10px;color:var(--muted);cursor:pointer;background:none;border:none;padding:0}',
+      '[data-cs="report-btn"]{font-size:10px;color:var(--muted);cursor:pointer;background:none;border:none;padding:0}',
       '[data-cs="report-btn"]:hover{color:var(--err)}',
       /* ── Context menu ── */
       '[data-cs="ctx-menu"]{',
@@ -477,7 +477,6 @@
       '[data-cs="dm-send"] svg{width:18px;height:18px;fill:#000;transform:translateX(1px)}',
       '[data-cs="dm-unread"]{position:absolute;top:-3px;right:-3px;min-width:14px;height:14px;border-radius:7px;background:var(--err);color:#fff;font-size:9px;font-weight:700;display:none;align-items:center;justify-content:center;padding:0 3px;border:1.5px solid var(--bg)}',
       '[data-cs="dm-unread"].cs-vis{display:flex}',
-      '[data-cs="dm-msg-btn"]:hover{color:var(--accent)}',
 
       /* ── Channel switcher panel ── */
       '[data-cs="ch-panel"]{position:absolute;inset:0;z-index:6;background:var(--surface);display:flex;flex-direction:column;transform:translateX(-105%);opacity:0;pointer-events:none;transition:transform .22s cubic-bezier(.4,0,.2,1),opacity .22s}',
@@ -704,7 +703,7 @@
     this.myName        = null;   // assigned by server on 'joined' event
     this.myUserID      = null;   // assigned by server on 'joined' event (registered users only)
     this.myAvatarColor = null;   // assigned by server on 'joined' event
-    this._allowDM      = true;   // from channel API; default true until fetched
+    this._allowDM      = false;  // set true only after channel API confirms allow_dm
     this._quoteMsg     = null;   // message being quoted
     this._ctxMenu      = null;   // singleton context menu element
 
@@ -806,9 +805,6 @@
       });
       Array.prototype.forEach.call(self.msgs.querySelectorAll('[data-cs="report-btn"]'), function(el) {
         el.textContent = self.wt('report');
-      });
-      Array.prototype.forEach.call(self.msgs.querySelectorAll('[data-cs="dm-msg-btn"]'), function(el) {
-        el.textContent = self.wt('dm');
       });
     },
 
@@ -1128,7 +1124,7 @@
             self.telegramURL = ch.telegram_url;
             self._buildTelegramBtn(ch.name, ch.telegram_url);
           }
-          self._allowDM = ch.allow_dm !== false;
+          self._allowDM = !!ch.allow_dm;
           if (ch.description) { self._chDescription = ch.description; self.setNotice(ch.description); }
           if (ch.welcome_message) {
             var key = 'cs:welcomed:' + self.channel;
