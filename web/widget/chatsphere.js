@@ -597,22 +597,19 @@
     return (name || '?').substring(0, 2).toUpperCase();
   }
 
-  // Create a <img> element for the country flag using Twemoji SVG (cross-platform reliable).
+  // Create a <span> element showing the country flag emoji.
+  // Uses Unicode Regional Indicator characters (no external CDN needed).
   function makeFlagImg(cc) {
     if (!cc || cc.length !== 2) return null;
-    var cp1 = (cc.toUpperCase().charCodeAt(0) + 127397).toString(16);
-    var cp2 = (cc.toUpperCase().charCodeAt(1) + 127397).toString(16);
-    var img = document.createElement('img');
-    img.src = 'https://cdn.jsdelivr.net/npm/twemoji@14.0.2/assets/svg/' + cp1 + '-' + cp2 + '.svg';
-    img.alt = cc;
-    img.style.cssText = 'width:14px;height:14px;display:block;';
-    img.onerror = function () {
-      var span = document.createElement('span');
-      span.textContent = cc;
-      span.style.cssText = 'font-size:9px;font-weight:700;line-height:1;';
-      if (img.parentNode) img.parentNode.replaceChild(span, img);
-    };
-    return img;
+    var upper = cc.toUpperCase();
+    // Regional Indicator A = U+1F1E6; offset from 'A' (65) = 127397
+    var flag = String.fromCodePoint(upper.charCodeAt(0) + 127397) +
+               String.fromCodePoint(upper.charCodeAt(1) + 127397);
+    var span = document.createElement('span');
+    span.textContent = flag;
+    span.setAttribute('aria-label', upper);
+    span.style.cssText = 'font-size:12px;line-height:1;display:block;';
+    return span;
   }
 
   // Generate a polished gradient + large-letter SVG avatar.
