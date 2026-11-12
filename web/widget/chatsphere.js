@@ -1117,6 +1117,7 @@
             self._buildTelegramBtn(ch.name, ch.telegram_url);
           }
           self._allowDM = !!ch.allow_dm;
+          if (self.dmBtnEl && self.myUserID) self.dmBtnEl.style.display = self._allowDM ? '' : 'none';
           if (ch.description) { self._chDescription = ch.description; self.setNotice(ch.description); }
           if (ch.welcome_message) {
             var key = 'cs:welcomed:' + self.channel;
@@ -1151,7 +1152,7 @@
           if (evt.user_id) {
             this.myUserID = evt.user_id;
             this.myAvatarColor = evt.avatar_color || null;
-            if (this.dmBtnEl) this.dmBtnEl.style.display = '';
+            if (this.dmBtnEl) this.dmBtnEl.style.display = this._allowDM ? '' : 'none';
           }
           // Apply channel accent color if provided by the server.
           if (evt.accent_color && /^#[0-9a-fA-F]{6}$/.test(evt.accent_color)) {
@@ -2181,12 +2182,20 @@
       // position:fixed popup — avoids overflow:hidden clipping from panel
       btn.addEventListener('mouseenter', function () {
         var r = btn.getBoundingClientRect();
-        var pw = 168 + 28; // popup width + padding
-        popup.style.top  = (r.top - popup.offsetHeight - 10) + 'px';
-        popup.style.left = Math.max(4, r.right - pw) + 'px';
+        // Measure while hidden: temporarily make visible but invisible
+        popup.style.visibility = 'hidden';
+        popup.style.top = '-9999px';
+        popup.style.left = '-9999px';
         popup.classList.add('cs-vis');
-        // recalc top after visible (offsetHeight now valid)
-        popup.style.top = (r.top - popup.offsetHeight - 10) + 'px';
+        var ph = popup.offsetHeight;
+        var pw = popup.offsetWidth || 196;
+        // Try above first; if not enough room, show below
+        var topAbove = r.top - ph - 8;
+        var top = topAbove >= 8 ? topAbove : r.bottom + 8;
+        var left = Math.max(8, Math.min(r.right - pw, window.innerWidth - pw - 8));
+        popup.style.top  = top + 'px';
+        popup.style.left = left + 'px';
+        popup.style.visibility = '';
       });
       btn.addEventListener('mouseleave', function () { popup.classList.remove('cs-vis'); });
     },
