@@ -176,7 +176,7 @@ const L = {
     edit:'编辑', remove:'移除', new_channel_title:'新建频道', edit_channel_title:'编辑频道',
     slug:'标识符', telegram_url:'Telegram 链接', max_msg_len:'最大消息长度', welcome_msg:'欢迎语',
     rate_limit:'发送限速（秒）', accent_color:'主题色',
-    allow_active:'启用频道', allow_default:'设为默认频道', allow_anon:'允许匿名',
+    allow_active:'启用频道', allow_default:'设为默认频道', allow_anon:'允许匿名', allow_dm:'允许私聊',
     cancel:'取消', save:'保存',
     search_msg:'搜索消息…', user:'用户', message:'消息', channel:'频道', time:'时间', action:'操作',
     anon:'匿名', delete_btn:'删除',
@@ -230,7 +230,7 @@ const L = {
     edit:'Edit', remove:'Remove', new_channel_title:'New Channel', edit_channel_title:'Edit Channel',
     slug:'Slug', telegram_url:'Telegram URL', max_msg_len:'Max Msg Length', welcome_msg:'Welcome Message',
     rate_limit:'Rate Limit (s)', accent_color:'Accent Color',
-    allow_active:'Active', allow_default:'Default Channel', allow_anon:'Allow Anonymous',
+    allow_active:'Active', allow_default:'Default Channel', allow_anon:'Allow Anonymous', allow_dm:'Allow DMs',
     cancel:'Cancel', save:'Save',
     search_msg:'Search messages…', user:'User', message:'Message', channel:'Channel', time:'Time', action:'Action',
     anon:'Anonymous', delete_btn:'Delete',
@@ -539,6 +539,7 @@ function openChannelModal(ch) {
     <div class="toggle-row"><span>${t('allow_active')}</span><label class="toggle"><input type="checkbox" id="m-active" ${ch?.is_active!==false?'checked':''}><span class="slider"></span></label></div>
     <div class="toggle-row"><span>${t('allow_default')}</span><label class="toggle"><input type="checkbox" id="m-default" ${ch?.is_default?'checked':''}><span class="slider"></span></label></div>
     <div class="toggle-row"><span>${t('allow_anon')}</span><label class="toggle"><input type="checkbox" id="m-anon" ${ch?.allow_anonymous!==false?'checked':''}><span class="slider"></span></label></div>
+    <div class="toggle-row"><span>${t('allow_dm')}</span><label class="toggle"><input type="checkbox" id="m-allow-dm" ${ch?.allow_dm!==false?'checked':''}><span class="slider"></span></label></div>
     <div class="modal-actions">
       <button class="btn btn-outline" onclick="closeModal()">${t('cancel')}</button>
       <button class="btn btn-primary" onclick="saveChannel(${ch?.id||0})">${t('save')}</button>
@@ -570,6 +571,7 @@ async function saveChannel(id) {
     is_active: document.getElementById('m-active').checked,
     is_default: document.getElementById('m-default').checked,
     allow_anonymous: document.getElementById('m-anon').checked,
+    allow_dm: document.getElementById('m-allow-dm').checked,
     accent_color: v('m-accent'),
   }
   if (id) await api.put('/channels/'+id, body)

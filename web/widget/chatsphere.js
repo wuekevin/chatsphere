@@ -275,6 +275,31 @@
       '[data-cs="msg"]:hover [data-cs="msg-actions"]{opacity:1}',
       '[data-cs="report-btn"],[data-cs="dm-msg-btn"]{font-size:10px;color:var(--muted);cursor:pointer;background:none;border:none;padding:0}',
       '[data-cs="report-btn"]:hover{color:var(--err)}',
+      /* ── Context menu ── */
+      '[data-cs="ctx-menu"]{',
+      '  position:fixed;z-index:99999;',
+      '  background:var(--surface);border:1px solid var(--border);',
+      '  border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.18);',
+      '  min-width:140px;padding:4px 0;overflow:hidden;',
+      '  animation:cs-pop .18s cubic-bezier(.34,1.56,.64,1);',
+      '}',
+      '[data-cs="ctx-item"]{',
+      '  display:flex;align-items:center;gap:9px;',
+      '  padding:9px 14px;font-size:13px;color:var(--fg);',
+      '  cursor:pointer;user-select:none;',
+      '}',
+      '[data-cs="ctx-item"]:hover{background:var(--surface-2)}',
+      '[data-cs="ctx-item"][data-danger]{color:var(--err)}',
+      '[data-cs="ctx-item"] svg{width:14px;height:14px;fill:currentColor;flex-shrink:0;opacity:.7}',
+      /* ── Quote bar ── */
+      '[data-cs="quote-bar"]{',
+      '  display:none;align-items:center;gap:8px;',
+      '  padding:6px 10px;border-left:3px solid var(--accent);',
+      '  background:var(--surface-2);font-size:12px;color:var(--muted);',
+      '}',
+      '[data-cs="quote-bar"].cs-vis{display:flex}',
+      '[data-cs="quote-text"]{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+      '[data-cs="quote-cancel"]{cursor:pointer;color:var(--muted);background:none;border:none;font-size:16px;line-height:1;padding:0;flex-shrink:0}',
       '[data-cs="sys-msg"]{',
       '  text-align:center;font-size:12px;color:var(--muted);margin:6px 20px;',
       '}',
@@ -625,6 +650,8 @@
       dm_placeholder:'发私信…', dm_send:'发送',
       back:'返回', close:'关闭',
       guest:'以访客身份继续',
+      ctx_at:'@提及', ctx_quote:'引用', ctx_dm:'私聊', ctx_copy:'复制',
+      quote_cancel:'取消引用',
     },
     en: {
       placeholder:'Say something…', account:'Account', minimise:'Minimise', dm:'DMs',
@@ -645,6 +672,8 @@
       dm_placeholder:'Send a message…', dm_send:'Send',
       back:'Back', close:'Close',
       guest:'Continue as guest',
+      ctx_at:'Mention', ctx_quote:'Quote', ctx_dm:'DM', ctx_copy:'Copy',
+      quote_cancel:'Cancel quote',
     }
   };
 
@@ -675,6 +704,9 @@
     this.myName        = null;   // assigned by server on 'joined' event
     this.myUserID      = null;   // assigned by server on 'joined' event (registered users only)
     this.myAvatarColor = null;   // assigned by server on 'joined' event
+    this._allowDM      = true;   // from channel API; default true until fetched
+    this._quoteMsg     = null;   // message being quoted
+    this._ctxMenu      = null;   // singleton context menu element
 
     // DM state
     this.dmOpen        = false;
@@ -1009,6 +1041,15 @@
       renderEmojiCat(EMOJI_CATS[1]);
       footer.appendChild(picker);
 
+      // Quote bar (shown when replying)
+      var quoteBar = this.quoteBarEl = cs('quote-bar');
+      var quoteTextEl = this.quoteTextEl = cs('quote-text');
+      var quoteCancelBtn = h('button', { 'data-cs': 'quote-cancel', 'title': this.wt('quote_cancel'), 'text': '×' });
+      quoteCancelBtn.addEventListener('click', function () { self._dismissQuote(); });
+      quoteBar.appendChild(quoteTextEl);
+      quoteBar.appendChild(quoteCancelBtn);
+      footer.appendChild(quoteBar);
+
       // Input row
       var row = cs('input-row');
 
@@ -1087,6 +1128,7 @@
             self.telegramURL = ch.telegram_url;
             self._buildTelegramBtn(ch.name, ch.telegram_url);
           }
+          self._allowDM = ch.allow_dm !== false;
           if (ch.description) { self._chDescription = ch.description; self.setNotice(ch.description); }
           if (ch.welcome_message) {
             var key = 'cs:welcomed:' + self.channel;
@@ -1262,24 +1304,26 @@
       var bubble = cs('bubble');
       bubble.innerHTML = renderContent(msg.content);
 
-      // Bubble row: bubble + inline action buttons (report / DM)
+      // Bubble row + right-click context menu
       var bubbleRow = h('div', { 'data-cs': 'bubble-row' });
       bubbleRow.appendChild(bubble);
-      if (!mine) {
-        var self = this;
-        var actionsEl = h('div', { 'data-cs': 'msg-actions' });
-        var reportBtn = h('button', { 'data-cs': 'report-btn', 'text': self.wt('report') });
-        reportBtn.addEventListener('click', function () { self._report(msg.id); });
-        actionsEl.appendChild(reportBtn);
-        // DM button — only for registered users (non-anonymous with a user_id)
-        if (!msg.is_anonymous && msg.user_id) {
-          var dmMsgBtn = h('button', { 'data-cs': 'dm-msg-btn', 'text': self.wt('dm') });
-          var _uid = msg.user_id, _uname = msg.display_name, _ucolor = msg.avatar_color;
-          dmMsgBtn.addEventListener('click', function () { self._openDMConv(_uid, _uname, _ucolor); });
-          actionsEl.appendChild(dmMsgBtn);
-        }
-        bubbleRow.appendChild(actionsEl);
+      var self = this;
+      var _ctxMsg = msg, _ctxMine = mine;
+      function showCtx(e) {
+        e.preventDefault();
+        self._showCtxMenu(_ctxMsg, _ctxMine, e.clientX, e.clientY);
       }
+      bubble.addEventListener('contextmenu', showCtx);
+      // Long-press for mobile
+      var _lpTimer = null;
+      bubble.addEventListener('touchstart', function (e) {
+        _lpTimer = setTimeout(function () {
+          var t = e.touches[0];
+          self._showCtxMenu(_ctxMsg, _ctxMine, t.clientX, t.clientY);
+        }, 500);
+      }, { passive: true });
+      bubble.addEventListener('touchend', function () { clearTimeout(_lpTimer); });
+      bubble.addEventListener('touchmove', function () { clearTimeout(_lpTimer); });
       var msgWrap = cs('msg-wrap');
       msgWrap.appendChild(metaEl);
       msgWrap.appendChild(bubbleRow);
@@ -1583,8 +1627,15 @@
     },
 
     _send: function () {
-      var content = this.inputEl.value.trim();
-      if (!content || !this.ws || this.ws.readyState !== 1) return;
+      var raw = this.inputEl.value.trim();
+      if (!raw || !this.ws || this.ws.readyState !== 1) return;
+      var content = raw;
+      if (this._quoteMsg) {
+        var qname = this._quoteMsg.display_name || 'Guest';
+        var qtext = (this._quoteMsg.content || '').replace(/\n/g, ' ').slice(0, 60);
+        content = '> @' + qname + ': ' + qtext + '\n' + raw;
+        this._dismissQuote();
+      }
       if (content.length > this.maxLen) {
         this._addSysMsg('消息超过 ' + this.maxLen + ' 字符限制', true);
         return;
@@ -1593,6 +1644,81 @@
       this.inputEl.value = '';
       this._onInputChange();
       this.inputEl.focus();
+    },
+
+    _dismissQuote: function () {
+      this._quoteMsg = null;
+      if (this.quoteBarEl) this.quoteBarEl.classList.remove('cs-vis');
+    },
+
+    _showCtxMenu: function (msg, mine, x, y) {
+      var self = this;
+      this._dismissCtxMenu();
+
+      var menu = this._ctxMenu = cs('ctx-menu');
+
+      function item(icon, label, handler, danger) {
+        var el = h('div', { 'data-cs': 'ctx-item' });
+        el.innerHTML = icon;
+        el.appendChild(document.createTextNode(label));
+        if (danger) el.setAttribute('data-danger', '');
+        el.addEventListener('click', function () { self._dismissCtxMenu(); handler(); });
+        menu.appendChild(el);
+      }
+
+      var atIcon   = '<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10h5v-2h-5c-4.34 0-8-3.66-8-8s3.66-8 8-8 8 3.66 8 8v1.43c0 .79-.71 1.57-1.5 1.57s-1.5-.78-1.5-1.57V12c0-2.76-2.24-5-5-5s-5 2.24-5 5 2.24 5 5 5c1.38 0 2.64-.56 3.54-1.47.65.89 1.77 1.47 2.96 1.47 1.97 0 3.5-1.6 3.5-3.57V12c0-5.52-4.48-10-10-10zm0 13c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3z"/></svg>';
+      var quoteIcon = '<svg viewBox="0 0 24 24"><path d="M6 17h3l2-4V7H5v6h3zm8 0h3l2-4V7h-6v6h3z"/></svg>';
+      var dmIcon    = '<svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>';
+      var copyIcon  = '<svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>';
+
+      if (!mine) {
+        var _name = msg.display_name || 'Guest';
+        item(atIcon, self.wt('ctx_at') + ' ' + _name, function () {
+          var el = self.inputEl;
+          var val = el.value;
+          var at = '@' + _name + ' ';
+          el.value = val ? val + ' ' + at : at;
+          el.focus();
+          el.setSelectionRange(el.value.length, el.value.length);
+          self._onInputChange();
+        });
+      }
+
+      item(quoteIcon, self.wt('ctx_quote'), function () {
+        self._quoteMsg = msg;
+        var preview = (msg.display_name || 'Guest') + ': ' + (msg.content || '').replace(/\n/g, ' ');
+        if (self.quoteTextEl) self.quoteTextEl.textContent = preview;
+        if (self.quoteBarEl)  self.quoteBarEl.classList.add('cs-vis');
+        self.inputEl.focus();
+      });
+
+      if (!mine && self._allowDM && msg.user_id && !msg.is_anonymous) {
+        var _uid = msg.user_id, _uname = msg.display_name, _ucolor = msg.avatar_color;
+        item(dmIcon, self.wt('ctx_dm'), function () { self._openDMConv(_uid, _uname, _ucolor); });
+      }
+
+      item(copyIcon, self.wt('ctx_copy'), function () {
+        var txt = msg.content || '';
+        try { navigator.clipboard.writeText(txt).catch(function () {}); } catch (_) {}
+      });
+
+      // Position within viewport
+      var root = this.panelEl || document.body;
+      root.appendChild(menu);
+      var mw = menu.offsetWidth || 150, mh = menu.offsetHeight || 160;
+      var vw = window.innerWidth, vh = window.innerHeight;
+      menu.style.left = Math.min(x, vw - mw - 8) + 'px';
+      menu.style.top  = Math.min(y, vh - mh - 8) + 'px';
+
+      var _dismiss = function () { self._dismissCtxMenu(); };
+      setTimeout(function () {
+        document.addEventListener('click', _dismiss, { once: true });
+        document.addEventListener('contextmenu', _dismiss, { once: true });
+      }, 0);
+    },
+
+    _dismissCtxMenu: function () {
+      if (this._ctxMenu) { this._ctxMenu.remove(); this._ctxMenu = null; }
     },
 
     _report: function (msgId) {

@@ -137,6 +137,7 @@ type channelRequest struct {
 	MaxMsgLength     int    `json:"max_msg_length"`
 	RateLimitSeconds int    `json:"rate_limit_seconds"`
 	AllowAnonymous   bool   `json:"allow_anonymous"`
+	AllowDM          bool   `json:"allow_dm"`
 	WelcomeMessage   string `json:"welcome_message"`
 	TelegramURL      string `json:"telegram_url"`
 	AccentColor      string `json:"accent_color"`
@@ -159,6 +160,7 @@ func adminCreateChannel(db *gorm.DB) gin.HandlerFunc {
 			MaxMsgLength:     req.MaxMsgLength,
 			RateLimitSeconds: req.RateLimitSeconds,
 			AllowAnonymous:   req.AllowAnonymous,
+			AllowDM:          req.AllowDM,
 			WelcomeMessage:   req.WelcomeMessage,
 			TelegramURL:      req.TelegramURL,
 			AccentColor:      req.AccentColor,
@@ -188,18 +190,19 @@ func adminUpdateChannel(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
-		if err := db.Model(&ch).Updates(model.Channel{
-			Name:             req.Name,
-			Slug:             req.Slug,
-			Description:      req.Description,
-			IsDefault:        req.IsDefault,
-			IsActive:         req.IsActive,
-			MaxMsgLength:     req.MaxMsgLength,
-			RateLimitSeconds: req.RateLimitSeconds,
-			AllowAnonymous:   req.AllowAnonymous,
-			WelcomeMessage:   req.WelcomeMessage,
-			TelegramURL:      req.TelegramURL,
-			AccentColor:      req.AccentColor,
+		if err := db.Model(&ch).Updates(map[string]any{
+			"name":               req.Name,
+			"slug":               req.Slug,
+			"description":        req.Description,
+			"is_default":         req.IsDefault,
+			"is_active":          req.IsActive,
+			"max_msg_length":     req.MaxMsgLength,
+			"rate_limit_seconds": req.RateLimitSeconds,
+			"allow_anonymous":    req.AllowAnonymous,
+			"allow_dm":           req.AllowDM,
+			"welcome_message":    req.WelcomeMessage,
+			"telegram_url":       req.TelegramURL,
+			"accent_color":       req.AccentColor,
 		}).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "update failed"})
 			return
