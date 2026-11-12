@@ -258,7 +258,7 @@
       '[data-cs="flag-corner"]{',
       '  position:absolute;bottom:-2px;right:-2px;',
       '  background:var(--surface);border-radius:50%;border:1px solid var(--border);',
-      '  width:20px;height:20px;overflow:hidden;',
+      '  width:16px;height:16px;overflow:hidden;',
       '  display:flex;align-items:center;justify-content:center;',
       '}',
       '[data-cs="msg-wrap"]{display:flex;flex-direction:column;max-width:75%;min-width:0}',
@@ -606,7 +606,7 @@
     var img = document.createElement('img');
     img.src = 'https://flagcdn.com/' + lower + '.svg';
     img.alt = upper;
-    img.style.cssText = 'width:20px;height:20px;display:block;border-radius:50%;object-fit:cover;';
+    img.style.cssText = 'width:16px;height:16px;display:block;border-radius:50%;object-fit:cover;';
     img.onerror = function () {
       var hue = ((upper.charCodeAt(0) * 11 + upper.charCodeAt(1) * 7) % 360 + 360) % 360;
       var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20">' +
