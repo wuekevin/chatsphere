@@ -621,36 +621,148 @@
     for (var i = 0; i < seed.length; i++) n = ((n << 5) - n + seed.charCodeAt(i)) | 0;
     function rnd() { n = (Math.imul(1664525, n) + 1013904223) | 0; return (n >>> 0) / 4294967296; }
 
-    var r = parseInt(color.slice(1, 3) || '63', 16);
-    var g = parseInt(color.slice(3, 5) || '66', 16);
-    var b = parseInt(color.slice(5, 7) || 'f1', 16);
-    // Lighter version for gradient end
-    var r2 = Math.min(255, r + 55);
-    var g2 = Math.min(255, g + 45);
-    var b2 = Math.min(255, b + 35);
-    var c2 = 'rgb(' + r2 + ',' + g2 + ',' + b2 + ')';
-    // Gradient direction (4 variants)
-    var dirs = [['0','0','1','1'],['1','0','0','1'],['0','1','1','0'],['0.5','0','0.5','1']];
-    var d = dirs[Math.floor(rnd() * 4)];
-    // Decorative background circle
-    var dx = (10 + rnd() * 32).toFixed(0);
-    var dy = (rnd() * 30).toFixed(0);
-    var dr = (18 + rnd() * 16).toFixed(0);
-    // First display character
-    var char = seed.replace(/^bot_/, '').replace(/^\d+/, '').charAt(0).toUpperCase() || seed.charAt(0).toUpperCase() || '?';
+    var cv = document.createElement('canvas');
+    cv.width = cv.height = 52;
+    var ctx = cv.getContext('2d');
+    var s = 52;
 
-    var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">' +
-      '<defs><linearGradient id="g" x1="' + d[0] + '" y1="' + d[1] + '" x2="' + d[2] + '" y2="' + d[3] + '">' +
-      '<stop offset="0%" stop-color="' + color + '"/>' +
-      '<stop offset="100%" stop-color="' + c2 + '"/>' +
-      '</linearGradient></defs>' +
-      '<rect width="52" height="52" fill="url(#g)"/>' +
-      '<circle cx="' + dx + '" cy="' + dy + '" r="' + dr + '" fill="rgba(255,255,255,0.12)"/>' +
-      '<text x="26" y="35" text-anchor="middle" dominant-baseline="auto"' +
-      ' font-family="-apple-system,BlinkMacSystemFont,\'Segoe UI\',system-ui,sans-serif"' +
-      ' font-weight="700" font-size="23" fill="rgba(255,255,255,0.93)">' + char + '</text>' +
-      '</svg>';
-    return 'data:image/svg+xml,' + encodeURIComponent(svg);
+    // Parse accent color
+    var cr = parseInt(color.slice(1,3)||'63',16);
+    var cg = parseInt(color.slice(3,5)||'66',16);
+    var cb = parseInt(color.slice(5,7)||'f1',16);
+    function darker(amt) {
+      return 'rgb('+Math.max(0,cr-amt)+','+Math.max(0,cg-amt)+','+Math.max(0,cb-amt)+')';
+    }
+    function lighter(amt) {
+      return 'rgb('+Math.min(255,cr+amt)+','+Math.min(255,cg+amt)+','+Math.min(255,cb+amt)+')';
+    }
+
+    // Animal type from seed: 0=cat 1=dog 2=bear 3=fox 4=bunny 5=panda
+    var type = Math.floor(rnd() * 6);
+
+    // Clip to circle
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(s/2, s/2, s/2, 0, Math.PI*2);
+    ctx.clip();
+
+    // Background gradient
+    var grd = ctx.createLinearGradient(0, 0, 0, s);
+    grd.addColorStop(0, lighter(55));
+    grd.addColorStop(1, color);
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, s, s);
+
+    var cx = s*0.5, cy = s*0.54, hr = s*0.33;
+
+    // Ears
+    ctx.fillStyle = color;
+    if (type === 0) { // cat — pointy
+      [[cx-hr*0.65,cy-hr*0.7,cx-hr*0.9,cy-hr*1.4,cx-hr*0.3,cy-hr*0.95],
+       [cx+hr*0.65,cy-hr*0.7,cx+hr*0.9,cy-hr*1.4,cx+hr*0.3,cy-hr*0.95]].forEach(function(p){
+        ctx.beginPath();ctx.moveTo(p[0],p[1]);ctx.lineTo(p[2],p[3]);ctx.lineTo(p[4],p[5]);ctx.closePath();ctx.fill();
+      });
+      ctx.fillStyle='rgba(255,170,170,0.55)';
+      [[cx-hr*0.62,cy-hr*0.72,cx-hr*0.78,cy-hr*1.2,cx-hr*0.38,cy-hr*0.88],
+       [cx+hr*0.62,cy-hr*0.72,cx+hr*0.78,cy-hr*1.2,cx+hr*0.38,cy-hr*0.88]].forEach(function(p){
+        ctx.beginPath();ctx.moveTo(p[0],p[1]);ctx.lineTo(p[2],p[3]);ctx.lineTo(p[4],p[5]);ctx.closePath();ctx.fill();
+      });
+    } else if (type === 1) { // dog — floppy
+      ctx.fillStyle = darker(40);
+      ctx.beginPath();ctx.ellipse(cx-hr*0.8,cy-hr*0.3,hr*0.27,hr*0.42,-0.3,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.ellipse(cx+hr*0.8,cy-hr*0.3,hr*0.27,hr*0.42,0.3,0,Math.PI*2);ctx.fill();
+    } else if (type === 2 || type === 5) { // bear / panda — round ears
+      ctx.fillStyle = type===5 ? '#2a2a2a' : darker(35);
+      [[cx-hr*0.72,cy-hr*0.82],[cx+hr*0.72,cy-hr*0.82]].forEach(function(p){
+        ctx.beginPath();ctx.arc(p[0],p[1],hr*0.3,0,Math.PI*2);ctx.fill();
+      });
+    } else if (type === 3) { // fox — angled
+      [[cx-hr*0.6,cy-hr*0.65,cx-hr*0.84,cy-hr*1.3,cx-hr*0.25,cy-hr*0.9],
+       [cx+hr*0.6,cy-hr*0.65,cx+hr*0.84,cy-hr*1.3,cx+hr*0.25,cy-hr*0.9]].forEach(function(p){
+        ctx.beginPath();ctx.moveTo(p[0],p[1]);ctx.lineTo(p[2],p[3]);ctx.lineTo(p[4],p[5]);ctx.closePath();ctx.fill();
+      });
+      ctx.fillStyle='rgba(255,195,100,0.55)';
+      [[cx-hr*0.57,cy-hr*0.68,cx-hr*0.74,cy-hr*1.16,cx-hr*0.3,cy-hr*0.86],
+       [cx+hr*0.57,cy-hr*0.68,cx+hr*0.74,cy-hr*1.16,cx+hr*0.3,cy-hr*0.86]].forEach(function(p){
+        ctx.beginPath();ctx.moveTo(p[0],p[1]);ctx.lineTo(p[2],p[3]);ctx.lineTo(p[4],p[5]);ctx.closePath();ctx.fill();
+      });
+    } else { // bunny — tall ears
+      [[cx-hr*0.52,cy-hr*0.55,hr*0.14,hr*0.5],[cx+hr*0.52,cy-hr*0.55,hr*0.14,hr*0.5]].forEach(function(p){
+        ctx.beginPath();ctx.ellipse(p[0],p[1],p[2],p[3],0,0,Math.PI*2);ctx.fill();
+      });
+      ctx.fillStyle='rgba(255,165,175,0.55)';
+      [[cx-hr*0.52,cy-hr*0.55,hr*0.07,hr*0.33],[cx+hr*0.52,cy-hr*0.55,hr*0.07,hr*0.33]].forEach(function(p){
+        ctx.beginPath();ctx.ellipse(p[0],p[1],p[2],p[3],0,0,Math.PI*2);ctx.fill();
+      });
+    }
+
+    // Head
+    ctx.fillStyle = type===5 ? '#f4f4f4' : color;
+    ctx.beginPath();ctx.arc(cx,cy,hr,0,Math.PI*2);ctx.fill();
+
+    // Eyes
+    var ey = cy - hr*0.12;
+    if (type === 5) { // panda eye patches
+      ctx.fillStyle='#2a2a2a';
+      [[cx-hr*0.36,ey],[cx+hr*0.36,ey]].forEach(function(p){
+        ctx.beginPath();ctx.ellipse(p[0],p[1],hr*0.2,hr*0.17,0,0,Math.PI*2);ctx.fill();
+      });
+      ctx.fillStyle='#fff';
+      [[cx-hr*0.36,ey],[cx+hr*0.36,ey]].forEach(function(p){
+        ctx.beginPath();ctx.ellipse(p[0],p[1],hr*0.11,hr*0.1,0,0,Math.PI*2);ctx.fill();
+      });
+      ctx.fillStyle='#111';
+      [[cx-hr*0.36,ey],[cx+hr*0.36,ey]].forEach(function(p){
+        ctx.beginPath();ctx.arc(p[0],p[1],hr*0.065,0,Math.PI*2);ctx.fill();
+      });
+    } else {
+      ctx.fillStyle='#fff';
+      [[cx-hr*0.3,ey],[cx+hr*0.3,ey]].forEach(function(p){
+        ctx.beginPath();ctx.arc(p[0],p[1],hr*0.14,0,Math.PI*2);ctx.fill();
+      });
+      ctx.fillStyle='#1a1a1a';
+      [[cx-hr*0.3,ey],[cx+hr*0.3,ey]].forEach(function(p){
+        ctx.beginPath();ctx.arc(p[0],p[1],hr*0.085,0,Math.PI*2);ctx.fill();
+      });
+      ctx.fillStyle='#fff';
+      [[cx-hr*0.28,ey-hr*0.04],[cx+hr*0.28,ey-hr*0.04]].forEach(function(p){
+        ctx.beginPath();ctx.arc(p[0],p[1],hr*0.036,0,Math.PI*2);ctx.fill();
+      });
+    }
+
+    // Nose & mouth
+    if (type===1||type===2||type===5) { // dog/bear/panda — oval snout
+      ctx.fillStyle = type===5 ? '#e5e5e5' : 'rgba(255,255,255,0.32)';
+      ctx.beginPath();ctx.ellipse(cx,cy+hr*0.2,hr*0.28,hr*0.19,0,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle = type===5 ? '#555' : 'rgba(0,0,0,0.42)';
+      ctx.beginPath();ctx.ellipse(cx,cy+hr*0.14,hr*0.1,hr*0.07,0,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle='rgba(0,0,0,0.38)';ctx.lineWidth=s*0.025;ctx.lineCap='round';
+      ctx.beginPath();ctx.moveTo(cx,cy+hr*0.34);
+      ctx.quadraticCurveTo(cx-hr*0.18,cy+hr*0.48,cx-hr*0.26,cy+hr*0.42);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(cx,cy+hr*0.34);
+      ctx.quadraticCurveTo(cx+hr*0.18,cy+hr*0.48,cx+hr*0.26,cy+hr*0.42);ctx.stroke();
+    } else { // cat/fox/bunny — triangle nose + whiskers
+      ctx.fillStyle='rgba(255,130,130,0.92)';
+      ctx.beginPath();ctx.moveTo(cx,cy+hr*0.17);
+      ctx.lineTo(cx-hr*0.1,cy+hr*0.28);ctx.lineTo(cx+hr*0.1,cy+hr*0.28);
+      ctx.closePath();ctx.fill();
+      ctx.strokeStyle='rgba(0,0,0,0.38)';ctx.lineWidth=s*0.025;ctx.lineCap='round';
+      ctx.beginPath();ctx.moveTo(cx,cy+hr*0.29);
+      ctx.quadraticCurveTo(cx-hr*0.16,cy+hr*0.44,cx-hr*0.24,cy+hr*0.38);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(cx,cy+hr*0.29);
+      ctx.quadraticCurveTo(cx+hr*0.16,cy+hr*0.44,cx+hr*0.24,cy+hr*0.38);ctx.stroke();
+      // whiskers
+      ctx.strokeStyle='rgba(0,0,0,0.18)';ctx.lineWidth=s*0.015;
+      [[cx-hr*0.12,cy+hr*0.24,cx-hr*0.8,cy+hr*0.17],
+       [cx-hr*0.12,cy+hr*0.3,cx-hr*0.8,cy+hr*0.3],
+       [cx+hr*0.12,cy+hr*0.24,cx+hr*0.8,cy+hr*0.17],
+       [cx+hr*0.12,cy+hr*0.3,cx+hr*0.8,cy+hr*0.3]].forEach(function(p){
+        ctx.beginPath();ctx.moveTo(p[0],p[1]);ctx.lineTo(p[2],p[3]);ctx.stroke();
+      });
+    }
+
+    ctx.restore();
+    return cv.toDataURL('image/png');
   }
 
   // Create an avatar <img> element showing the gradient identicon.
