@@ -171,17 +171,6 @@
 
       /* ── Telegram QR popup ── */
       '[data-cs="tg-wrap"]{position:relative}',
-      '[data-cs="tg-popup"]{',
-      '  display:none;position:fixed;',
-      '  background:var(--surface);border:1px solid var(--border);border-radius:12px;',
-      '  padding:14px;box-shadow:0 8px 32px rgba(0,0,0,.2);z-index:99999;',
-      '  width:168px;text-align:center;pointer-events:none;',
-      '}',
-      '[data-cs="tg-popup"].cs-vis{display:block}',
-      '[data-cs="tg-popup-title"]{font-size:13px;font-weight:700;color:var(--fg);margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
-      '[data-cs="tg-popup-sub"]{font-size:11px;color:var(--muted);margin-bottom:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
-      '[data-cs="tg-popup-img"]{width:140px;height:140px;border-radius:6px;display:block;margin:0 auto 8px;background:var(--surface-2)}',
-      '[data-cs="tg-popup-hint"]{font-size:10px;color:var(--muted)}',
 
       /* ── Notice banner ── */
       '[data-cs="notice"]{',
@@ -239,10 +228,9 @@
       '}',
       '[data-cs="flag-corner"]{',
       '  position:absolute;bottom:-2px;right:-2px;',
-      '  font-size:12px;line-height:1;',
-      '  font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif;',
       '  background:var(--surface);border-radius:50%;border:1px solid var(--border);',
-      '  width:18px;height:18px;display:flex;align-items:center;justify-content:center;',
+      '  width:20px;height:20px;overflow:hidden;',
+      '  display:flex;align-items:center;justify-content:center;',
       '}',
       '[data-cs="msg-wrap"]{display:flex;flex-direction:column;max-width:75%;min-width:0}',
       '[data-cs="msg"][data-mine] [data-cs="msg-wrap"]{align-items:flex-end}',
@@ -580,35 +568,63 @@
     return (name || '?').substring(0, 2).toUpperCase();
   }
 
-  function flagEmoji(cc) {
-    if (!cc || cc.length !== 2) return cc || '';
-    // Try Unicode Regional Indicator chars; they render as flags on most modern platforms.
-    try { return String.fromCodePoint(cc.charCodeAt(0) + 127397, cc.charCodeAt(1) + 127397); } catch (_) { return cc; }
+  // Create a <img> element for the country flag using Twemoji SVG (cross-platform reliable).
+  function makeFlagImg(cc) {
+    if (!cc || cc.length !== 2) return null;
+    var cp1 = (cc.toUpperCase().charCodeAt(0) + 127397).toString(16);
+    var cp2 = (cc.toUpperCase().charCodeAt(1) + 127397).toString(16);
+    var img = document.createElement('img');
+    img.src = 'https://cdn.jsdelivr.net/npm/twemoji@14.0.2/assets/svg/' + cp1 + '-' + cp2 + '.svg';
+    img.alt = cc;
+    img.style.cssText = 'width:14px;height:14px;display:block;';
+    img.onerror = function () {
+      var span = document.createElement('span');
+      span.textContent = cc;
+      span.style.cssText = 'font-size:9px;font-weight:700;line-height:1;';
+      if (img.parentNode) img.parentNode.replaceChild(span, img);
+    };
+    return img;
   }
 
-  // Generate a 5×5 symmetric SVG identicon for a user seed + accent color.
+  // Generate a polished gradient + large-letter SVG avatar.
   function generateIdenticon(seed, color) {
     var n = 0;
     for (var i = 0; i < seed.length; i++) n = ((n << 5) - n + seed.charCodeAt(i)) | 0;
-    var cells = [];
-    for (var i = 0; i < 15; i++) {
-      n = (Math.imul(1664525, n) + 1013904223) | 0;
-      cells.push(!!(n & 0x80000000));
-    }
-    var rects = '';
-    for (var row = 0; row < 5; row++) {
-      for (var col = 0; col < 5; col++) {
-        var c = col > 2 ? 4 - col : col;
-        if (cells[row * 3 + c]) {
-          rects += '<rect x="' + (col * 10 + 1) + '" y="' + (row * 10 + 1) + '" width="8" height="8" rx="1.5"/>';
-        }
-      }
-    }
-    var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52"><rect width="52" height="52" fill="' + color + '" opacity=".12"/><g fill="' + color + '">' + rects + '</g></svg>';
+    function rnd() { n = (Math.imul(1664525, n) + 1013904223) | 0; return (n >>> 0) / 4294967296; }
+
+    var r = parseInt(color.slice(1, 3) || '63', 16);
+    var g = parseInt(color.slice(3, 5) || '66', 16);
+    var b = parseInt(color.slice(5, 7) || 'f1', 16);
+    // Lighter version for gradient end
+    var r2 = Math.min(255, r + 55);
+    var g2 = Math.min(255, g + 45);
+    var b2 = Math.min(255, b + 35);
+    var c2 = 'rgb(' + r2 + ',' + g2 + ',' + b2 + ')';
+    // Gradient direction (4 variants)
+    var dirs = [['0','0','1','1'],['1','0','0','1'],['0','1','1','0'],['0.5','0','0.5','1']];
+    var d = dirs[Math.floor(rnd() * 4)];
+    // Decorative background circle
+    var dx = (10 + rnd() * 32).toFixed(0);
+    var dy = (rnd() * 30).toFixed(0);
+    var dr = (18 + rnd() * 16).toFixed(0);
+    // First display character
+    var char = seed.replace(/^bot_/, '').replace(/^\d+/, '').charAt(0).toUpperCase() || seed.charAt(0).toUpperCase() || '?';
+
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">' +
+      '<defs><linearGradient id="g" x1="' + d[0] + '" y1="' + d[1] + '" x2="' + d[2] + '" y2="' + d[3] + '">' +
+      '<stop offset="0%" stop-color="' + color + '"/>' +
+      '<stop offset="100%" stop-color="' + c2 + '"/>' +
+      '</linearGradient></defs>' +
+      '<rect width="52" height="52" fill="url(#g)"/>' +
+      '<circle cx="' + dx + '" cy="' + dy + '" r="' + dr + '" fill="rgba(255,255,255,0.12)"/>' +
+      '<text x="26" y="35" text-anchor="middle" dominant-baseline="auto"' +
+      ' font-family="-apple-system,BlinkMacSystemFont,\'Segoe UI\',system-ui,sans-serif"' +
+      ' font-weight="700" font-size="23" fill="rgba(255,255,255,0.93)">' + char + '</text>' +
+      '</svg>';
     return 'data:image/svg+xml,' + encodeURIComponent(svg);
   }
 
-  // Create an avatar <img> element showing the identicon.
+  // Create an avatar <img> element showing the gradient identicon.
   function makeAvatarImg(seed, color) {
     var img = document.createElement('img');
     img.src = generateIdenticon(seed || 'guest', color);
@@ -1303,12 +1319,13 @@
       // Avatar wrapper + flag corner
       var avatarWrap = cs('avatar-wrap');
       var avatarEl = cs('avatar');
-      var idSeed = (msg.user_id ? String(msg.user_id) : name) + (msg.country || '');
+      var idSeed = name + (msg.user_id ? String(msg.user_id) : '') + (msg.country || '');
       avatarEl.appendChild(makeAvatarImg(idSeed, color));
       avatarWrap.appendChild(avatarEl);
       if (msg.country) {
         var flagCorner = cs('flag-corner');
-        flagCorner.textContent = flagEmoji(msg.country);
+        var fi = makeFlagImg(msg.country);
+        if (fi) flagCorner.appendChild(fi);
         avatarWrap.appendChild(flagCorner);
       }
 
@@ -2190,49 +2207,10 @@
       this.tgWrap.innerHTML = '';
       if (!tgURL) return;
 
-      var self = this;
       var btn = h('button', { 'data-cs': 'hbtn', 'title': 'Telegram', 'aria-label': 'Telegram' });
       btn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>';
-
-      var popup = h('div', { 'data-cs': 'tg-popup' });
-      var titleEl = h('div', { 'data-cs': 'tg-popup-title' });
-      titleEl.textContent = channelName || 'Telegram';
-      var sub = tgURL.replace(/https?:\/\/t\.me\//, '@').replace(/https?:\/\/telegram\.me\//, '@');
-      var subEl = h('div', { 'data-cs': 'tg-popup-sub' });
-      subEl.textContent = sub;
-      var img = h('img', { 'data-cs': 'tg-popup-img', 'alt': 'QR Code' });
-      img.src = self.server + '/api/channels/' + self.channel + '/qrcode';
-      img.onerror = function () { img.style.display = 'none'; };
-      var hint = h('div', { 'data-cs': 'tg-popup-hint' });
-      hint.textContent = '手机扫码，在 Telegram 中打开';
-      popup.appendChild(titleEl);
-      popup.appendChild(subEl);
-      popup.appendChild(img);
-      popup.appendChild(hint);
-
       this.tgWrap.appendChild(btn);
-      this.tgWrap.appendChild(popup);
       btn.addEventListener('click', function () { window.open(tgURL, '_blank'); });
-
-      // position:fixed popup — avoids overflow:hidden clipping from panel
-      btn.addEventListener('mouseenter', function () {
-        var r = btn.getBoundingClientRect();
-        // Measure while hidden: temporarily make visible but invisible
-        popup.style.visibility = 'hidden';
-        popup.style.top = '-9999px';
-        popup.style.left = '-9999px';
-        popup.classList.add('cs-vis');
-        var ph = popup.offsetHeight;
-        var pw = popup.offsetWidth || 196;
-        // Try above first; if not enough room, show below
-        var topAbove = r.top - ph - 8;
-        var top = topAbove >= 8 ? topAbove : r.bottom + 8;
-        var left = Math.max(8, Math.min(r.right - pw, window.innerWidth - pw - 8));
-        popup.style.top  = top + 'px';
-        popup.style.left = left + 'px';
-        popup.style.visibility = '';
-      });
-      btn.addEventListener('mouseleave', function () { popup.classList.remove('cs-vis'); });
     },
 
     _loadChannels: function () {
