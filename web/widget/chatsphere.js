@@ -59,9 +59,9 @@
       /* ── Button (card shape when closed, circle when open) ── */
       '@keyframes cs-pop{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}',
       '[data-cs="btn"]{',
-      '  width:min(176px,calc(100vw - 48px));height:40px;border-radius:20px;',
+      '  width:min(192px,calc(100vw - 48px));height:48px;border-radius:24px;',
       '  background:var(--accent);border:none;cursor:pointer;',
-      '  display:flex;align-items:center;gap:7px;padding:0 10px 0 6px;',
+      '  display:flex;align-items:center;gap:8px;padding:0 12px 0 8px;',
       '  box-shadow:0 4px 20px var(--accent-glow);',
       '  transition:width .3s cubic-bezier(.4,0,.2,1),height .3s,border-radius .3s,padding .3s;',
       '  position:relative;overflow:hidden;',
@@ -70,15 +70,15 @@
       '[data-cs="btn"]:hover{box-shadow:0 6px 24px var(--accent-glow)}',
       /* icon circle inside the card */
       '[data-cs="btn-icon"]{',
-      '  width:26px;height:26px;min-width:26px;border-radius:50%;',
+      '  width:30px;height:30px;min-width:30px;border-radius:50%;',
       '  background:rgba(0,0,0,.18);display:flex;align-items:center;justify-content:center;',
       '  transition:opacity .2s;flex-shrink:0;',
       '}',
-      '[data-cs="btn-icon"] svg{width:14px;height:14px;fill:#fff}',
+      '[data-cs="btn-icon"] svg{width:16px;height:16px;fill:#fff}',
       /* text column */
       '[data-cs="btn-info"]{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;overflow:hidden;transition:opacity .2s,max-width .3s}',
-      '[data-cs="btn-title"]{font-size:12px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
-      '[data-cs="btn-preview"]{font-size:10px;color:rgba(255,255,255,.75);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+      '[data-cs="btn-title"]{font-size:13px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+      '[data-cs="btn-preview"]{font-size:11px;color:rgba(255,255,255,.75);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
       /* close icon (shown when open) */
       '[data-cs="btn-close-icon"]{width:20px;height:20px;fill:#fff;opacity:0;position:absolute;transition:opacity .2s;pointer-events:none}',
       /* open state: collapse to circle */
@@ -171,6 +171,20 @@
       '@media(prefers-color-scheme:light){[data-cs="hbtn"]:hover{background:rgba(0,0,0,.15);color:#fff}}',
       '[data-cs="hbtn"] svg{width:16px;height:16px;fill:currentColor}',
       '[data-cs="hbtn"][data-lang-btn]{width:auto;min-width:0;padding:0 7px;font-size:11px;font-weight:700;letter-spacing:.02em}',
+
+      /* ── Telegram QR popup ── */
+      '[data-cs="tg-wrap"]{position:relative}',
+      '[data-cs="tg-popup"]{',
+      '  display:none;position:absolute;bottom:calc(100% + 8px);right:0;',
+      '  background:var(--surface);border:1px solid var(--border);border-radius:12px;',
+      '  padding:14px;box-shadow:0 8px 32px rgba(0,0,0,.2);z-index:9999;',
+      '  width:168px;text-align:center;pointer-events:none;',
+      '}',
+      '[data-cs="tg-wrap"]:hover [data-cs="tg-popup"]{display:block}',
+      '[data-cs="tg-popup-title"]{font-size:13px;font-weight:700;color:var(--fg);margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+      '[data-cs="tg-popup-sub"]{font-size:11px;color:var(--muted);margin-bottom:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+      '[data-cs="tg-popup-img"]{width:140px;height:140px;border-radius:6px;display:block;margin:0 auto 8px;background:var(--surface-2)}',
+      '[data-cs="tg-popup-hint"]{font-size:10px;color:var(--muted)}',
 
       /* ── Notice banner ── */
       '[data-cs="notice"]{',
@@ -866,11 +880,10 @@
       this.onlineSpan = document.createTextNode('0' + this.wt('online'));
       onlineEl.appendChild(this.onlineSpan);
 
+      this.tgWrap = h('div', { 'data-cs': 'tg-wrap' });
+      hdr.appendChild(this.tgWrap);
       if (this.telegramURL) {
-        var tgBtn = h('button', { 'data-cs': 'hbtn', 'title': 'Telegram', 'aria-label': 'Telegram' });
-        tgBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>';
-        tgBtn.addEventListener('click', function () { window.open(self.telegramURL, '_blank'); });
-        hdr.appendChild(tgBtn);
+        this._buildTelegramBtn(this.channelTitle || this.title, this.telegramURL);
       }
 
       // Auth button: shows username when logged in, person icon when logged out
@@ -1041,6 +1054,18 @@
       this.isConnected = true;
       this.retryDelay  = 1000;
       this._setConnected(true);
+      var self = this;
+      fetch(this.server + '/api/channels/' + this.channel)
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (data) {
+          if (!data || !data.channel) return;
+          var ch = data.channel;
+          if (ch.telegram_url && ch.telegram_url !== self.telegramURL) {
+            self.telegramURL = ch.telegram_url;
+            self._buildTelegramBtn(ch.name, ch.telegram_url);
+          }
+        })
+        .catch(function () {});
     },
 
     _onClose: function () {
@@ -1514,6 +1539,8 @@
         this._scrollBottom();
         var el = this.inputEl;
         setTimeout(function () { el.focus(); }, 320);
+      } else if (this.btnPreviewEl && this._lastPreview) {
+        this.btnPreviewEl.textContent = this._lastPreview;
       }
     },
 
@@ -1598,7 +1625,10 @@
     _clearUnread: function () {
       this.unread = 0;
       this.badge.style.display = 'none';
-      if (this.btnPreviewEl) this.btnPreviewEl.textContent = '';
+      if (this.btnPreviewEl) {
+        this._lastPreview = this.btnPreviewEl.textContent;
+        this.btnPreviewEl.textContent = '';
+      }
       this._hideNewMsgBtn();
     },
 
@@ -1946,6 +1976,36 @@
       }
       this._toggleChPanel();
       this._connect();
+    },
+
+    _buildTelegramBtn: function (channelName, tgURL) {
+      if (!this.tgWrap) return;
+      this.tgWrap.innerHTML = '';
+      if (!tgURL) return;
+
+      var self = this;
+      var btn = h('button', { 'data-cs': 'hbtn', 'title': 'Telegram', 'aria-label': 'Telegram' });
+      btn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>';
+
+      var popup = h('div', { 'data-cs': 'tg-popup' });
+      var titleEl = h('div', { 'data-cs': 'tg-popup-title' });
+      titleEl.textContent = channelName || 'Telegram';
+      var sub = tgURL.replace(/https?:\/\/t\.me\//, '@').replace(/https?:\/\/telegram\.me\//, '@');
+      var subEl = h('div', { 'data-cs': 'tg-popup-sub' });
+      subEl.textContent = sub;
+      var img = h('img', { 'data-cs': 'tg-popup-img', 'alt': 'QR Code' });
+      img.src = self.server + '/api/channels/' + self.channel + '/qrcode';
+      img.onerror = function () { img.style.display = 'none'; };
+      var hint = h('div', { 'data-cs': 'tg-popup-hint' });
+      hint.textContent = '手机扫码，在 Telegram 中打开';
+      popup.appendChild(titleEl);
+      popup.appendChild(subEl);
+      popup.appendChild(img);
+      popup.appendChild(hint);
+
+      this.tgWrap.appendChild(btn);
+      this.tgWrap.appendChild(popup);
+      btn.addEventListener('click', function () { window.open(tgURL, '_blank'); });
     },
 
     _loadChannels: function () {

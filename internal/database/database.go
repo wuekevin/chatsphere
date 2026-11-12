@@ -88,5 +88,6 @@ func migrate(db *gorm.DB) error {
 		&model.DirectMessage{},
 		&model.EmbedConfig{},
 		&model.BotConfig{},
+		&model.AllowedDomain{},
 	)
 }

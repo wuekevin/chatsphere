@@ -157,6 +157,12 @@ func (c *Client) handleSend(content string) {
 	// Sanitize blocked words before HTML escaping (escaping expands some bytes).
 	content = c.hub.SanitizeBlocked(content)
 
+	// Reject links to non-whitelisted domains (when whitelist is configured).
+	if !c.hub.CheckURLAllowed(content) {
+		c.sendError("Links to this domain are not allowed.")
+		return
+	}
+
 	content = html.EscapeString(content)
 
 	// Rate limiting

@@ -376,6 +376,49 @@ func (h *Hub) loadBlockedPatterns() {
 	h.blockedMu.Unlock()
 }
 
+// CheckURLAllowed returns true if content contains no URLs, or all URLs are from
+// admin-allowed domains. If no allowed domains are configured, all URLs are permitted.
+func (h *Hub) CheckURLAllowed(content string) bool {
+	urlRe := regexp.MustCompile(`https?://([^/\s"'<>]+)`)
+	matches := urlRe.FindAllStringSubmatch(content, -1)
+	if len(matches) == 0 {
+		return true
+	}
+
+	var domains []string
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	if err := h.db.WithContext(ctx).Model(&struct {
+		Domain string
+	}{}).Table("allowed_domains").Pluck("domain", &domains).Error; err != nil || len(domains) == 0 {
+		return true // no rules configured → allow everything
+	}
+
+	domainSet := make(map[string]bool, len(domains))
+	for _, d := range domains {
+		domainSet[strings.ToLower(d)] = true
+	}
+
+	for _, m := range matches {
+		host := strings.ToLower(m[1])
+		// strip port
+		if idx := strings.Index(host, ":"); idx != -1 {
+			host = host[:idx]
+		}
+		allowed := false
+		for d := range domainSet {
+			if host == d || strings.HasSuffix(host, "."+d) {
+				allowed = true
+				break
+			}
+		}
+		if !allowed {
+			return false
+		}
+	}
+	return true
+}
+
 // SanitizeBlocked replaces matched blocked words/patterns with *** in content.
 // The cache refreshes automatically after 5 minutes.
 func (h *Hub) SanitizeBlocked(content string) string {

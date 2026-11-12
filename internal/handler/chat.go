@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	qrcode "github.com/skip2/go-qrcode"
 
 	"github.com/wuekevin/chatsphere/internal/config"
 	"github.com/wuekevin/chatsphere/internal/middleware"
@@ -29,6 +30,8 @@ func RegisterChat(
 
 	api := r.Group("/api")
 	api.GET("/channels", listChannelsHandler(chSvc))
+	api.GET("/channels/:slug", getChannelHandler(chSvc))
+	api.GET("/channels/:slug/qrcode", channelQRCodeHandler(chSvc))
 	api.GET("/channels/:slug/messages", getMessagesHandler(chSvc, msgSvc))
 }
 
@@ -108,6 +111,39 @@ func listChannelsHandler(chSvc *service.ChannelService) gin.HandlerFunc {
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"channels": channels})
+	}
+}
+
+func getChannelHandler(chSvc *service.ChannelService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		slug := c.Param("slug")
+		channel, err := chSvc.GetBySlug(slug)
+		if err != nil {
+			if errors.Is(err, repository.ErrNotFound) {
+				c.JSON(http.StatusNotFound, gin.H{"error": "channel not found"})
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+			}
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"channel": channel})
+	}
+}
+
+func channelQRCodeHandler(chSvc *service.ChannelService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		slug := c.Param("slug")
+		channel, err := chSvc.GetBySlug(slug)
+		if err != nil || channel.TelegramURL == "" {
+			c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+			return
+		}
+		png, err := qrcode.Encode(channel.TelegramURL, qrcode.Medium, 256)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "qr failed"})
+			return
+		}
+		c.Data(http.StatusOK, "image/png", png)
 	}
 }
 

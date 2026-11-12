@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
@@ -53,6 +54,10 @@ func RegisterAdmin(r *gin.Engine, db *gorm.DB, rdb *redis.Client, cfg *config.Co
 	admin.GET("/blocked-words", adminListBlockedWords(db))
 	admin.POST("/blocked-words", adminCreateBlockedWord(db))
 	admin.DELETE("/blocked-words/:id", adminDeleteBlockedWord(db))
+
+	admin.GET("/allowed-domains", adminListAllowedDomains(db))
+	admin.POST("/allowed-domains", adminCreateAllowedDomain(db))
+	admin.DELETE("/allowed-domains/:id", adminDeleteAllowedDomain(db))
 
 	// Embed config
 	admin.GET("/embed-config", getEmbedConfig(db))
@@ -394,6 +399,43 @@ func adminDeleteBlockedWord(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id, _ := strconv.ParseUint(c.Param("id"), 10, 64)
 		db.Model(&model.BlockedWord{}).Where("id = ?", id).Update("is_active", false)
+		c.JSON(http.StatusOK, gin.H{"ok": true})
+	}
+}
+
+// --- Allowed Domains ---
+
+func adminListAllowedDomains(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var domains []model.AllowedDomain
+		db.Order("created_at ASC").Find(&domains)
+		c.JSON(http.StatusOK, gin.H{"domains": domains})
+	}
+}
+
+func adminCreateAllowedDomain(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var body struct {
+			Domain string `json:"domain" binding:"required"`
+		}
+		if err := c.ShouldBindJSON(&body); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		domain := strings.ToLower(strings.TrimSpace(body.Domain))
+		d := model.AllowedDomain{Domain: domain}
+		if err := db.Create(&d).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "create failed"})
+			return
+		}
+		c.JSON(http.StatusCreated, gin.H{"domain": d})
+	}
+}
+
+func adminDeleteAllowedDomain(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, _ := strconv.ParseUint(c.Param("id"), 10, 64)
+		db.Delete(&model.AllowedDomain{}, id)
 		c.JSON(http.StatusOK, gin.H{"ok": true})
 	}
 }
