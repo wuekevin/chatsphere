@@ -597,19 +597,55 @@
     return (name || '?').substring(0, 2).toUpperCase();
   }
 
-  // Create a <span> element showing the country flag emoji.
-  // Uses Unicode Regional Indicator characters (no external CDN needed).
+  // Country flag colours (main bg + optional stripe) for inline SVG rendering.
+  // No external CDN, works on every browser/OS.
+  var FLAG_COLORS = {
+    CN:'#DE2910', HK:'#DE2910', MO:'#007B5E', TW:'#FE0000',
+    US:'#B22234', GB:'#012169', CA:'#FF0000', AU:'#00008B',
+    JP:'#FFFFFF', KR:'#FFFFFF', SG:'#EF3340', IN:'#FF9933',
+    DE:'#000000', FR:'#002395', IT:'#009246', ES:'#AA151B',
+    RU:'#FFFFFF', BR:'#009C3B', MX:'#006847', AR:'#74ACDF',
+    ZA:'#007A4D', NG:'#008751', EG:'#CE1126', SA:'#006C35',
+    TR:'#E30A17', ID:'#CE1126', PH:'#0038A8', TH:'#A51931',
+    VN:'#DA251D', MY:'#CC0001', PK:'#01411C', BD:'#006A4E',
+    NL:'#AE1C28', SE:'#006AA7', NO:'#EF2B2D', DK:'#C60C30',
+    FI:'#003580', PL:'#DC143C', UA:'#005BBB', PT:'#006600',
+    CH:'#FF0000', AT:'#ED2939', BE:'#000000', GR:'#0D5EAF',
+    CZ:'#D7141A', RO:'#002B7F', HU:'#CE2939', BG:'#FFFFFF',
+    NZ:'#00247D', IL:'#FFFFFF', AE:'#00732F', IR:'#239F40',
+    IQ:'#CE1126', KW:'#007A3D', QA:'#8D1B3D', OM:'#DB161B',
+    KZ:'#00AFCA', UZ:'#1EB53A', MM:'#FECB00', KH:'#032EA1',
+    LK:'#8D153A', NP:'#003893', AF:'#000000', ET:'#078930',
+    KE:'#006600', GH:'#006B3F', TZ:'#1EB53A', MA:'#C1272D',
+    DZ:'#006233', TN:'#E70013', LY:'#000000', SD:'#D21034',
+    CL:'#D52B1E', CO:'#FCD116', VE:'#CF142B', PE:'#D91023'
+  };
+
+  // Returns a flag-corner <img> as an inline SVG data URI.
+  // Falls back to a hue-colored badge so something always shows.
   function makeFlagImg(cc) {
     if (!cc || cc.length !== 2) return null;
     var upper = cc.toUpperCase();
-    // Regional Indicator A = U+1F1E6; offset from 'A' (65) = 127397
-    var flag = String.fromCodePoint(upper.charCodeAt(0) + 127397) +
-               String.fromCodePoint(upper.charCodeAt(1) + 127397);
-    var span = document.createElement('span');
-    span.textContent = flag;
-    span.setAttribute('aria-label', upper);
-    span.style.cssText = 'font-size:12px;line-height:1;display:block;';
-    return span;
+
+    // Pick background color: known flag colour or deterministic hue
+    var bg = FLAG_COLORS[upper];
+    if (!bg) {
+      var hue = ((upper.charCodeAt(0) * 11 + upper.charCodeAt(1) * 7) % 360 + 360) % 360;
+      bg = 'hsl(' + hue + ',60%,38%)';
+    }
+
+    // Build a minimal inline SVG: solid bg + 2-letter white code
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20">' +
+      '<rect width="20" height="20" fill="' + bg + '"/>' +
+      '<text x="10" y="14" text-anchor="middle"' +
+      ' font-family="system-ui,sans-serif" font-size="8" font-weight="800"' +
+      ' fill="#fff" opacity="0.95">' + upper + '</text>' +
+      '</svg>';
+    var img = document.createElement('img');
+    img.src = 'data:image/svg+xml,' + encodeURIComponent(svg);
+    img.alt = upper;
+    img.style.cssText = 'width:20px;height:20px;display:block;border-radius:50%;';
+    return img;
   }
 
   // Generate a polished gradient + large-letter SVG avatar.
