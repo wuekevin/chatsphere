@@ -176,7 +176,7 @@ func getMessagesHandler(chSvc *service.ChannelService, msgSvc *service.MessageSe
 // 20 adjectives × 20 nouns = 400 possible names.
 // detectCountry reads the visitor's ISO-3166-1 alpha-2 country code from the
 // first configured header that returns a 2-character value.
-// Falls back to CF-IPCountry then X-Country when country_headers is not set.
+// Falls back to CF-IPCountry then X-Country, then Accept-Language as a hint.
 func detectCountry(c *gin.Context, cfg *config.Config) string {
 	hdrs := cfg.Server.CountryHeaders
 	if len(hdrs) == 0 {
@@ -184,7 +184,19 @@ func detectCountry(c *gin.Context, cfg *config.Config) string {
 	}
 	for _, h := range hdrs {
 		if v := c.GetHeader(h); len(v) == 2 {
-			return v
+			return strings.ToUpper(v)
+		}
+	}
+	// Best-effort: extract region subtag from Accept-Language (e.g. "zh-CN" → "CN").
+	al := c.GetHeader("Accept-Language")
+	for _, seg := range strings.Split(al, ",") {
+		seg = strings.TrimSpace(strings.SplitN(seg, ";", 2)[0])
+		parts := strings.Split(seg, "-")
+		if len(parts) >= 2 {
+			cc := strings.ToUpper(parts[len(parts)-1])
+			if len(cc) == 2 {
+				return cc
+			}
 		}
 	}
 	return ""

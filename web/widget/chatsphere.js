@@ -719,7 +719,7 @@
       dm_placeholder:'发私信…', dm_send:'发送',
       back:'返回', close:'关闭',
       guest:'以访客身份继续',
-      ctx_at:'@提及', ctx_quote:'引用', ctx_dm:'私聊', ctx_copy:'复制',
+      ctx_at:'@提及', ctx_quote:'引用', ctx_dm:'私聊', ctx_copy:'复制', ctx_report:'举报',
       quote_cancel:'取消引用',
     },
     en: {
@@ -741,7 +741,7 @@
       dm_placeholder:'Send a message…', dm_send:'Send',
       back:'Back', close:'Close',
       guest:'Continue as guest',
-      ctx_at:'Mention', ctx_quote:'Quote', ctx_dm:'DM', ctx_copy:'Copy',
+      ctx_at:'Mention', ctx_quote:'Quote', ctx_dm:'DM', ctx_copy:'Copy', ctx_report:'Report',
       quote_cancel:'Cancel quote',
     }
   };
@@ -1736,10 +1736,11 @@
         menu.appendChild(el);
       }
 
-      var atIcon   = '<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10h5v-2h-5c-4.34 0-8-3.66-8-8s3.66-8 8-8 8 3.66 8 8v1.43c0 .79-.71 1.57-1.5 1.57s-1.5-.78-1.5-1.57V12c0-2.76-2.24-5-5-5s-5 2.24-5 5 2.24 5 5 5c1.38 0 2.64-.56 3.54-1.47.65.89 1.77 1.47 2.96 1.47 1.97 0 3.5-1.6 3.5-3.57V12c0-5.52-4.48-10-10-10zm0 13c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3z"/></svg>';
-      var quoteIcon = '<svg viewBox="0 0 24 24"><path d="M6 17h3l2-4V7H5v6h3zm8 0h3l2-4V7h-6v6h3z"/></svg>';
-      var dmIcon    = '<svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>';
-      var copyIcon  = '<svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>';
+      var atIcon     = '<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10h5v-2h-5c-4.34 0-8-3.66-8-8s3.66-8 8-8 8 3.66 8 8v1.43c0 .79-.71 1.57-1.5 1.57s-1.5-.78-1.5-1.57V12c0-2.76-2.24-5-5-5s-5 2.24-5 5 2.24 5 5 5c1.38 0 2.64-.56 3.54-1.47.65.89 1.77 1.47 2.96 1.47 1.97 0 3.5-1.6 3.5-3.57V12c0-5.52-4.48-10-10-10zm0 13c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3z"/></svg>';
+      var quoteIcon  = '<svg viewBox="0 0 24 24"><path d="M6 17h3l2-4V7H5v6h3zm8 0h3l2-4V7h-6v6h3z"/></svg>';
+      var dmIcon     = '<svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>';
+      var copyIcon   = '<svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>';
+      var reportIcon = '<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>';
 
       if (!mine) {
         var _name = msg.display_name || 'Guest';
@@ -1772,8 +1773,13 @@
         try { navigator.clipboard.writeText(txt).catch(function () {}); } catch (_) {}
       });
 
-      // Position within viewport
-      var root = this.panelEl || document.body;
+      if (!mine) {
+        var _rid = msg.id;
+        item(reportIcon, self.wt('ctx_report'), function () { self._report(_rid); }, true);
+      }
+
+      // Position within viewport — must append inside root so CSS vars (--surface etc.) are inherited
+      var root = this.root;
       root.appendChild(menu);
       var mw = menu.offsetWidth || 150, mh = menu.offsetHeight || 160;
       var vw = window.innerWidth, vh = window.innerHeight;
@@ -1834,6 +1840,11 @@
         var text = (msg.content || '').replace(/<[^>]*>/g, '').substring(0, 40);
         this.btnPreviewEl.textContent = sender ? sender + ': ' + text : text;
       }
+      // Track @mention for the @ badge
+      if (msg && msg.content && msg.content.indexOf('@') !== -1) {
+        this._atMentionUnread = (this._atMentionUnread || 0) + 1;
+        this._updateDMLauncherBadge();
+      }
       // Switch to notification bubble card on first unread
       if (wasZero && this.btn) this.btn.classList.add('cs-notif');
       this._playNotifSound();
@@ -1867,6 +1878,8 @@
         this._lastPreview = this.btnPreviewEl.textContent;
         this.btnPreviewEl.textContent = '';
       }
+      this._atMentionUnread = 0;
+      this._updateDMLauncherBadge();
       this._hideNewMsgBtn();
     },
 
@@ -1874,6 +1887,7 @@
       var total = 0;
       var convs = this.dmConvs;
       Object.keys(convs).forEach(function (k) { total += convs[k].unread; });
+      total += (this._atMentionUnread || 0);
       if (this.dmLauncherBadge) {
         this.dmLauncherBadge.classList.toggle('cs-vis', total > 0);
       }

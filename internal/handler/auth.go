@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -45,14 +46,8 @@ func registerHandler(db *gorm.DB, cfg *config.Config) gin.HandlerFunc {
 			return
 		}
 
-		// Best-effort country detection from CDN headers.
-		country := c.GetHeader("CF-IPCountry")
-		if country == "" {
-			country = c.GetHeader("X-Country")
-		}
-		if len(country) != 2 {
-			country = ""
-		}
+		// Best-effort country detection from CDN headers, then Accept-Language.
+		country := detectCountryHeader(c)
 
 		user := &model.User{
 			Username:     req.Username,
@@ -207,6 +202,27 @@ func issueToken(user *model.User, secret string) (string, error) {
 		},
 	}
 	return jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(secret))
+}
+
+// detectCountryHeader is a header-only country detection (no config) used at registration.
+func detectCountryHeader(c *gin.Context) string {
+	for _, h := range []string{"CF-IPCountry", "X-Country"} {
+		if v := c.GetHeader(h); len(v) == 2 {
+			return strings.ToUpper(v)
+		}
+	}
+	al := c.GetHeader("Accept-Language")
+	for _, seg := range strings.Split(al, ",") {
+		seg = strings.TrimSpace(strings.SplitN(seg, ";", 2)[0])
+		parts := strings.Split(seg, "-")
+		if len(parts) >= 2 {
+			cc := strings.ToUpper(parts[len(parts)-1])
+			if len(cc) == 2 {
+				return cc
+			}
+		}
+	}
+	return ""
 }
 
 // randomColor generates a deterministic avatar color from a username.
