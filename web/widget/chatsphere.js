@@ -180,12 +180,12 @@
       /* ── Telegram QR popup ── */
       '[data-cs="tg-wrap"]{position:relative}',
       '[data-cs="tg-popup"]{',
-      '  display:none;position:absolute;bottom:calc(100% + 8px);right:0;',
+      '  display:none;position:fixed;',
       '  background:var(--surface);border:1px solid var(--border);border-radius:12px;',
-      '  padding:14px;box-shadow:0 8px 32px rgba(0,0,0,.2);z-index:9999;',
+      '  padding:14px;box-shadow:0 8px 32px rgba(0,0,0,.2);z-index:99999;',
       '  width:168px;text-align:center;pointer-events:none;',
       '}',
-      '[data-cs="tg-wrap"]:hover [data-cs="tg-popup"]{display:block}',
+      '[data-cs="tg-popup"].cs-vis{display:block}',
       '[data-cs="tg-popup-title"]{font-size:13px;font-weight:700;color:var(--fg);margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
       '[data-cs="tg-popup-sub"]{font-size:11px;color:var(--muted);margin-bottom:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
       '[data-cs="tg-popup-img"]{width:140px;height:140px;border-radius:6px;display:block;margin:0 auto 8px;background:var(--surface-2)}',
@@ -2031,6 +2031,16 @@
     setNotice: function (t) {
       this.notice = t;
       var el = this.noticeEl.querySelector('[data-cs="notice-text"]');
+      if (!el && t) {
+        // notice was built empty; lazily add the child elements now
+        var txt = h('span', { 'data-cs': 'notice-text' });
+        var self = this;
+        var cls = this.noticeCls = h('button', { 'data-cs': 'notice-close', 'aria-label': this.wt('dismiss'), 'text': '×' });
+        cls.addEventListener('click', function () { self.noticeEl.classList.add('cs-hidden'); });
+        this.noticeEl.appendChild(txt);
+        this.noticeEl.appendChild(cls);
+        el = txt;
+      }
       if (el) el.textContent = t;
       this.noticeEl.classList.toggle('cs-hidden', !t);
     },
@@ -2175,6 +2185,18 @@
       this.tgWrap.appendChild(btn);
       this.tgWrap.appendChild(popup);
       btn.addEventListener('click', function () { window.open(tgURL, '_blank'); });
+
+      // position:fixed popup — avoids overflow:hidden clipping from panel
+      btn.addEventListener('mouseenter', function () {
+        var r = btn.getBoundingClientRect();
+        var pw = 168 + 28; // popup width + padding
+        popup.style.top  = (r.top - popup.offsetHeight - 10) + 'px';
+        popup.style.left = Math.max(4, r.right - pw) + 'px';
+        popup.classList.add('cs-vis');
+        // recalc top after visible (offsetHeight now valid)
+        popup.style.top = (r.top - popup.offsetHeight - 10) + 'px';
+      });
+      btn.addEventListener('mouseleave', function () { popup.classList.remove('cs-vis'); });
     },
 
     _loadChannels: function () {
