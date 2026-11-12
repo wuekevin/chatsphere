@@ -200,6 +200,17 @@
       '}',
       '[data-cs="notice-close"]:hover{opacity:1}',
 
+      /* ── Welcome message (first-visit, inline in chat area) ── */
+      '[data-cs="welcome-msg"]{',
+      '  position:absolute;inset:0;',
+      '  display:flex;align-items:center;justify-content:center;',
+      '  pointer-events:none;padding:20px;',
+      '}',
+      '[data-cs="welcome-msg-inner"]{',
+      '  text-align:center;font-size:14px;line-height:1.7;',
+      '  color:var(--muted);opacity:.55;white-space:pre-wrap;',
+      '}',
+
       /* ── Messages area ── */
       '[data-cs="msgs-wrap"]{flex:1;position:relative;overflow:hidden;display:flex;flex-direction:column}',
       '[data-cs="msgs"]{',
@@ -1070,6 +1081,16 @@
             self.telegramURL = ch.telegram_url;
             self._buildTelegramBtn(ch.name, ch.telegram_url);
           }
+          if (ch.description) self.setNotice(ch.description);
+          if (ch.welcome_message) {
+            var key = 'cs:welcomed:' + self.channel;
+            try {
+              if (!localStorage.getItem(key)) {
+                localStorage.setItem(key, '1');
+                self._showWelcome(ch.welcome_message);
+              }
+            } catch(e) { self._showWelcome(ch.welcome_message); }
+          }
         })
         .catch(function () {});
     },
@@ -1202,6 +1223,7 @@
     // ── Rendering ─────────────────────────────────────────────────────────────
 
     _renderMsg: function (msg) {
+      if (this._welcomeEl) { this._welcomeEl.remove(); this._welcomeEl = null; }
       var mine  = !!(this.myName && msg.display_name === this.myName);
       var name  = msg.display_name || 'Guest';
       var color = msg.avatar_color || hashColor(name);
@@ -1881,6 +1903,15 @@
       var el = this.noticeEl.querySelector('[data-cs="notice-text"]');
       if (el) el.textContent = t;
       this.noticeEl.classList.toggle('cs-hidden', !t);
+    },
+
+    _showWelcome: function (msg) {
+      var wrap  = h('div', { 'data-cs': 'welcome-msg' });
+      var inner = h('div', { 'data-cs': 'welcome-msg-inner', 'text': msg });
+      wrap.appendChild(inner);
+      var msgsWrap = this.msgs && this.msgs.parentNode;
+      if (msgsWrap) msgsWrap.appendChild(wrap);
+      this._welcomeEl = wrap;
     },
 
     // ── Bot cards ─────────────────────────────────────────────────────────────

@@ -170,11 +170,11 @@ const L = {
     reg_users:'注册用户', total_msgs:'消息总数', active_channels:'活跃频道', pending_reports:'待处理举报',
     quick_start:'快速开始', quick_start_msg:'在您的网页中加入以下代码（放在 &lt;/body&gt; 前）即可嵌入聊天组件。前往',
     quick_start_link:'嵌入设置', quick_start_msg2:'查看嵌入代码。',
-    new_channel:'+ 新建频道', name:'名称', description:'描述', status:'状态',
+    new_channel:'+ 新建频道', name:'名称', description:'频道公告', status:'状态',
     default:'默认', anonymous:'允许匿名', actions:'操作',
     active:'活跃', inactive:'未启用', yes:'是', no:'否',
     edit:'编辑', remove:'移除', new_channel_title:'新建频道', edit_channel_title:'编辑频道',
-    slug:'标识符', telegram_url:'Telegram 链接', max_msg_len:'最大消息长度',
+    slug:'标识符', telegram_url:'Telegram 链接', max_msg_len:'最大消息长度', welcome_msg:'欢迎语',
     rate_limit:'发送限速（秒）', accent_color:'主题色',
     allow_active:'启用频道', allow_default:'设为默认频道', allow_anon:'允许匿名',
     cancel:'取消', save:'保存',
@@ -224,11 +224,11 @@ const L = {
     reg_users:'Registered Users', total_msgs:'Total Messages', active_channels:'Active Channels', pending_reports:'Pending Reports',
     quick_start:'Quick Start', quick_start_msg:'Copy one of the snippets below and paste into your webpage before &lt;/body&gt;. Go to',
     quick_start_link:'Widget & Embed', quick_start_msg2:'to get the embed code.',
-    new_channel:'+ New Channel', name:'Name', description:'Description', status:'Status',
+    new_channel:'+ New Channel', name:'Name', description:'Announcement', status:'Status',
     default:'Default', anonymous:'Anonymous', actions:'Actions',
     active:'Active', inactive:'Inactive', yes:'Yes', no:'No',
     edit:'Edit', remove:'Remove', new_channel_title:'New Channel', edit_channel_title:'Edit Channel',
-    slug:'Slug', telegram_url:'Telegram URL', max_msg_len:'Max Msg Length',
+    slug:'Slug', telegram_url:'Telegram URL', max_msg_len:'Max Msg Length', welcome_msg:'Welcome Message',
     rate_limit:'Rate Limit (s)', accent_color:'Accent Color',
     allow_active:'Active', allow_default:'Default Channel', allow_anon:'Allow Anonymous',
     cancel:'Cancel', save:'Save',
@@ -525,6 +525,7 @@ function openChannelModal(ch) {
     </div>
     <div class="form-group"><label>${t('description')}</label><textarea id="m-desc">${esc(ch?.description||'')}</textarea></div>
     <div class="form-group"><label>${t('telegram_url')}</label><input id="m-tg" value="${esc(ch?.telegram_url||'')}"></div>
+    <div class="form-group"><label>${t('welcome_msg')} <small style="color:#6b7280">${lang==='zh'?'（首次进入时对用户显示）':'(shown once to first-time visitors)'}</small></label><textarea id="m-welcome" rows="2">${esc(ch?.welcome_message||'')}</textarea></div>
     <div class="form-row-2">
       <div class="form-group"><label>${t('max_msg_len')}</label><input id="m-maxlen" type="number" value="${ch?.max_msg_length||200}"></div>
       <div class="form-group"><label>${t('rate_limit')}</label><input id="m-rate" type="number" value="${ch?.rate_limit_seconds||3}"></div>
@@ -557,13 +558,15 @@ function syncColor(val) {
   if (pick && /^#[0-9a-fA-F]{6}$/.test(val)) pick.value = val
 }
 function autoSlug() {
-  const s = document.getElementById('m-name').value.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')
+  const name = document.getElementById('m-name').value
+  let s = name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')
+  if (!s && name.trim()) s = 'ch-' + Date.now().toString(36).slice(-6)
   document.getElementById('m-slug').value = s
 }
 async function saveChannel(id) {
   const body = {
     name: v('m-name'), slug: v('m-slug'), description: v('m-desc'),
-    telegram_url: v('m-tg'), max_msg_length: +v('m-maxlen'), rate_limit_seconds: +v('m-rate'),
+    telegram_url: v('m-tg'), welcome_message: v('m-welcome'), max_msg_length: +v('m-maxlen'), rate_limit_seconds: +v('m-rate'),
     is_active: document.getElementById('m-active').checked,
     is_default: document.getElementById('m-default').checked,
     allow_anonymous: document.getElementById('m-anon').checked,
@@ -747,21 +750,6 @@ async function renderWidget() {
           </select>
         </div>
       </div>
-      <div class="form-group" style="margin-top:12px">
-        <label class="label" style="font-size:13px;font-weight:600;margin-bottom:4px;display:block">聊天标题</label>
-        <input id="ec-title" class="input" placeholder="聊天" value="${esc(cfg.title)}" style="width:100%">
-      </div>
-      <div class="form-group" style="margin-top:12px">
-        <label class="label" style="font-size:13px;font-weight:600;margin-bottom:4px;display:block">公告文字</label>
-        <input id="ec-notice" class="input" placeholder="欢迎来到聊天室" value="${esc(cfg.notice)}" style="width:100%">
-      </div>
-      <div class="form-group" style="margin-top:12px">
-        <label class="label" style="font-size:13px;font-weight:600;margin-bottom:4px;display:block">主题色</label>
-        <div style="display:flex;gap:8px;align-items:center">
-          <input type="color" id="ec-accent-picker" value="${cfg.accent_color||'#f5a623'}" style="width:40px;height:36px;border:none;cursor:pointer;border-radius:6px;padding:2px">
-          <input id="ec-accent" class="input" style="flex:1" placeholder="#f5a623" value="${esc(cfg.accent_color)}" maxlength="7">
-        </div>
-      </div>
       <button class="btn btn-primary" style="margin-top:16px" onclick="saveEmbedConfig()">保存配置</button>
     </div>
 
@@ -773,12 +761,6 @@ async function renderWidget() {
     </div>
   `;
 
-  document.getElementById('ec-accent-picker').addEventListener('input', function(){
-    document.getElementById('ec-accent').value = this.value;
-  });
-  document.getElementById('ec-accent').addEventListener('input', function(){
-    if(/^#[0-9a-fA-F]{6}$/.test(this.value)) document.getElementById('ec-accent-picker').value = this.value;
-  });
 }
 
 function buildOneliner(cfg) {
@@ -799,9 +781,6 @@ async function saveEmbedConfig() {
     channel: document.getElementById('ec-channel').value.trim() || 'general',
     position: document.getElementById('ec-position').value,
     offset: parseInt(document.getElementById('ec-offset').value)||20,
-    title: document.getElementById('ec-title').value.trim(),
-    notice: document.getElementById('ec-notice').value.trim(),
-    accent_color: document.getElementById('ec-accent').value.trim(),
     lang: document.getElementById('ec-lang').value,
   };
   try {
