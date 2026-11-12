@@ -26,7 +26,7 @@
       '  --accent:#f5a623;--accent-dim:rgba(245,166,35,.15);--accent-glow:rgba(245,166,35,.35);',
       '  --fg:#e8e9ef;--muted:#9ca3af;--border:rgba(255,255,255,.08);',
       '  --ok:#22c55e;--err:#ef4444;',
-      '  --radius:16px;--w:360px;--h:520px;--btn:56px;',
+      '  --radius:16px;--w:400px;--h:540px;--btn:56px;',
       '  --shadow:0 8px 40px rgba(0,0,0,.45),0 2px 8px rgba(0,0,0,.3);',
       '  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;',
       '  font-size:14px;line-height:1.5;color:var(--fg);',
@@ -1071,6 +1071,7 @@
       this.isConnected = true;
       this.retryDelay  = 1000;
       this._setConnected(true);
+      if (this._chDescription) this.setNotice(this._chDescription);
       var self = this;
       fetch(this.server + '/api/channels/' + this.channel)
         .then(function (r) { return r.ok ? r.json() : null; })
@@ -1081,7 +1082,7 @@
             self.telegramURL = ch.telegram_url;
             self._buildTelegramBtn(ch.name, ch.telegram_url);
           }
-          if (ch.description) self.setNotice(ch.description);
+          if (ch.description) { self._chDescription = ch.description; self.setNotice(ch.description); }
           if (ch.welcome_message) {
             var key = 'cs:welcomed:' + self.channel;
             try {
@@ -1140,6 +1141,8 @@
         case 'history':
           if (evt.messages && evt.messages.length) {
             var self = this;
+            this.msgs.innerHTML = '';
+            if (this._welcomeEl) { this._welcomeEl.remove(); this._welcomeEl = null; }
             evt.messages.forEach(function (raw) {
               try {
                 self._renderMsg(typeof raw === 'string' ? JSON.parse(raw) : raw);
