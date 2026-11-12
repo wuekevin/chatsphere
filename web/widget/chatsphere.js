@@ -245,7 +245,6 @@
       '[data-cs="name"]{font-size:12px;font-weight:600;color:var(--fg)}',
       '[data-cs="name"].cs-anon{color:var(--muted);font-weight:500}',
       '[data-cs="time"]{font-size:11px;color:var(--muted)}',
-      '[data-cs="flag"]{font-size:10px;line-height:1;opacity:.5}',
       '[data-cs="bubble"]{',
       '  padding:8px 12px;font-size:13px;line-height:1.55;word-break:break-word;',
       '  background:var(--surface-2);color:var(--fg);',
@@ -1220,11 +1219,6 @@
 
       // Meta (name + time)
       var metaEl = cs('msg-meta');
-      if (msg.country) {
-        var flagEl = cs('flag');
-        flagEl.textContent = flagEmoji(msg.country);
-        metaEl.appendChild(flagEl);
-      }
       var nameEl = h('span', { 'data-cs': 'name', 'text': name });
       if (msg.is_anonymous) nameEl.classList.add('cs-anon');
       metaEl.appendChild(nameEl);
