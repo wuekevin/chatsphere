@@ -253,6 +253,37 @@ func (h *Hub) sendHistory(c *Client) {
 
 	raw, err := h.redis.LRange(ctx, key, -historyLimit, -1).Result()
 	if err != nil || len(raw) == 0 {
+		// Redis empty (e.g. after a message deletion cleared the cache) —
+		// fall back to MySQL, skip deleted messages, then repopulate Redis.
+		var dbMsgs []model.Message
+		h.db.WithContext(ctx).
+			Where("channel_id = ? AND is_deleted = false", h.channelID).
+			Order("created_at DESC").
+			Limit(historyLimit).
+			Find(&dbMsgs)
+		if len(dbMsgs) == 0 {
+			return
+		}
+		// Reverse to chronological order.
+		for i, j := 0, len(dbMsgs)-1; i < j; i, j = i+1, j-1 {
+			dbMsgs[i], dbMsgs[j] = dbMsgs[j], dbMsgs[i]
+		}
+		pipe := h.redis.Pipeline()
+		var messages []json.RawMessage
+		for _, m := range dbMsgs {
+			data, _ := json.Marshal(m)
+			messages = append(messages, json.RawMessage(data))
+			pipe.RPush(ctx, key, data)
+		}
+		pipe.LTrim(ctx, key, int64(-redisHistoryCap), -1)
+		pipe.Expire(ctx, key, 24*time.Hour)
+		pipe.Exec(ctx)
+
+		payload, _ := json.Marshal(Event{Type: "history", Messages: messages})
+		select {
+		case c.send <- payload:
+		default:
+		}
 		return
 	}
 

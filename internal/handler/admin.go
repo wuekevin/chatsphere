@@ -615,7 +615,7 @@ func serveWidgetJS(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
-		c.Header("Cache-Control", "public, max-age=300")
+		c.Header("Cache-Control", "no-cache, must-revalidate")
 		c.Data(http.StatusOK, "application/javascript; charset=utf-8", buf.Bytes())
 	}
 }
