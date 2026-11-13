@@ -122,3 +122,18 @@ func (r *HubRegistry) BroadcastToChannel(channelID uint64, evt Event) {
 		v.(*Hub).BroadcastJSON(evt)
 	}
 }
+
+// PersistBotEventToChannel saves a bot event to the Redis history of one channel.
+func (r *HubRegistry) PersistBotEventToChannel(channelID uint64, evt Event) {
+	if v, ok := r.channelHubs.Load(channelID); ok {
+		v.(*Hub).PersistBotEvent(evt)
+	}
+}
+
+// PersistBotEventAll saves a bot event to the Redis history of every active channel.
+func (r *HubRegistry) PersistBotEventAll(evt Event) {
+	r.hubs.Range(func(_, v any) bool {
+		v.(*Hub).PersistBotEvent(evt)
+		return true
+	})
+}

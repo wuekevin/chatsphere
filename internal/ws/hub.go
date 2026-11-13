@@ -378,6 +378,23 @@ func (h *Hub) detectAndNotifyMentions(content string, msg *model.Message, sender
 	}
 }
 
+// PersistBotEvent pushes a bot_card event into the Redis history ring buffer
+// so that clients who join or refresh after the broadcast still see the card.
+func (h *Hub) PersistBotEvent(evt Event) {
+	data, err := json.Marshal(evt)
+	if err != nil {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	key := fmt.Sprintf(redisChannelKey, h.channelID)
+	pipe := h.redis.Pipeline()
+	pipe.RPush(ctx, key, data)
+	pipe.LTrim(ctx, key, int64(-redisHistoryCap), -1)
+	pipe.Expire(ctx, key, 24*time.Hour)
+	pipe.Exec(ctx)
+}
+
 // InvalidateBlockedCache resets the blocked-word cache TTL so the next
 // SanitizeBlocked call reloads from the database immediately.
 func (h *Hub) InvalidateBlockedCache() {

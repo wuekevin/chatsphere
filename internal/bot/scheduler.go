@@ -78,8 +78,10 @@ func (s *Scheduler) fire(b model.BotConfig) {
 	}
 
 	if b.ChannelID != nil {
+		s.hubReg.PersistBotEventToChannel(*b.ChannelID, evt)
 		s.hubReg.BroadcastToChannel(*b.ChannelID, evt)
 	} else {
+		s.hubReg.PersistBotEventAll(evt)
 		s.hubReg.BroadcastAll(evt)
 	}
 

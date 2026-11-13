@@ -1392,7 +1392,12 @@
             if (this._welcomeEl) { this._welcomeEl.remove(); this._welcomeEl = null; }
             evt.messages.forEach(function (raw) {
               try {
-                self._renderMsg(typeof raw === 'string' ? JSON.parse(raw) : raw);
+                var m = typeof raw === 'string' ? JSON.parse(raw) : raw;
+                if (m.type === 'bot_card' && m.bot_cards) {
+                  self._renderBotCards(m.content || 'Bot', m.avatar_color || '', m.bot_cards);
+                } else {
+                  self._renderMsg(m);
+                }
               } catch (_) {}
             });
             this._scrollBottom();
