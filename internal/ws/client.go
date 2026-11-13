@@ -151,12 +151,12 @@ func (c *Client) handleSend(content string) {
 		maxLen = 200
 	}
 	if utf8.RuneCountInString(content) > maxLen {
-		c.sendError(fmt.Sprintf("Message exceeds %d characters.", maxLen))
+		c.sendParamError("err_too_long", maxLen, fmt.Sprintf("Message exceeds %d characters.", maxLen))
 		return
 	}
 	// Reject links to non-whitelisted domains (when whitelist is configured).
 	if !c.hub.CheckURLAllowed(content) {
-		c.sendError("Links to this domain are not allowed.")
+		c.sendCodeError("err_domain", "Links to this domain are not allowed.")
 		return
 	}
 
@@ -169,7 +169,7 @@ func (c *Client) handleSend(content string) {
 	}
 	if !c.lastSentAt.IsZero() && time.Since(c.lastSentAt) < time.Duration(rateLimit)*time.Second {
 		remaining := time.Duration(rateLimit)*time.Second - time.Since(c.lastSentAt)
-		c.sendError(fmt.Sprintf("Please wait %.0f seconds before sending again.", remaining.Seconds()))
+		c.sendParamError("err_rate_limit", int(remaining.Seconds()+0.5), fmt.Sprintf("Please wait %.0f seconds before sending again.", remaining.Seconds()))
 		return
 	}
 	c.lastSentAt = time.Now()
@@ -257,11 +257,11 @@ func (c *Client) tryGainXP() {
 
 func (c *Client) handleDM(toUserID uint64, content string) {
 	if c.isAnonymous || c.userID == nil {
-		c.sendError("Private messages require a registered account.")
+		c.sendCodeError("err_dm_login", "Private messages require a registered account.")
 		return
 	}
 	if toUserID == 0 || toUserID == *c.userID {
-		c.sendError("Invalid recipient.")
+		c.sendCodeError("err_dm_invalid", "Invalid recipient.")
 		return
 	}
 	content = strings.TrimSpace(content)
@@ -270,14 +270,14 @@ func (c *Client) handleDM(toUserID uint64, content string) {
 	}
 	content = html.EscapeString(content)
 	if utf8.RuneCountInString(content) > 500 {
-		c.sendError("Private message exceeds 500 characters.")
+		c.sendCodeError("err_dm_too_long", "Private message exceeds 500 characters.")
 		return
 	}
 
 	// Look up recipient to get display info
 	var toUser model.User
 	if err := c.hub.db.First(&toUser, toUserID).Error; err != nil {
-		c.sendError("User not found.")
+		c.sendCodeError("err_user_not_found", "User not found.")
 		return
 	}
 
@@ -287,7 +287,7 @@ func (c *Client) handleDM(toUserID uint64, content string) {
 		Content:    content,
 	}
 	if err := c.hub.db.Create(dm).Error; err != nil {
-		c.sendError("Failed to send message.")
+		c.sendCodeError("err_send_failed", "Failed to send message.")
 		return
 	}
 
@@ -387,6 +387,12 @@ func (c *Client) sendJSON(v any) {
 
 func (c *Client) sendError(msg string) {
 	c.sendJSON(Event{Type: "error", Error: msg})
+}
+func (c *Client) sendCodeError(code, msg string) {
+	c.sendJSON(Event{Type: "error", Code: code, Error: msg})
+}
+func (c *Client) sendParamError(code string, param int, msg string) {
+	c.sendJSON(Event{Type: "error", Code: code, Param: param, Error: msg})
 }
 
 func (c *Client) writePump() {

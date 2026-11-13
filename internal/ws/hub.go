@@ -309,6 +309,8 @@ type Event struct {
 	Message     *model.Message         `json:"message,omitempty"`
 	Messages    []json.RawMessage      `json:"messages,omitempty"`
 	Error       string                 `json:"error,omitempty"`
+	Code        string                 `json:"code,omitempty"`
+	Param       int                    `json:"param,omitempty"`
 	ID          *uint64                `json:"id,omitempty"`
 	Content     string                 `json:"content,omitempty"`
 	AccentColor string                 `json:"accent_color,omitempty"`

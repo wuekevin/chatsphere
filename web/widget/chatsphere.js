@@ -838,6 +838,14 @@
       guest:'以访客身份继续',
       ctx_at:'@提及', ctx_quote:'引用', ctx_dm:'私聊', ctx_copy:'复制', ctx_report:'举报',
       quote_cancel:'取消引用',
+      err_domain:'不允许发送此域名的链接',
+      err_rate_limit:function(s){return '请稍等 '+s+' 秒后再发送';},
+      err_too_long:function(n){return '消息超过 '+n+' 字符限制';},
+      err_dm_login:'私信需要注册账号',
+      err_dm_invalid:'无效的收信人',
+      err_dm_too_long:'私信超过500字符限制',
+      err_user_not_found:'找不到该用户',
+      err_send_failed:'发送失败，请重试',
     },
     en: {
       placeholder:'Say something…', account:'Account', minimise:'Minimise', dm:'DMs',
@@ -860,6 +868,14 @@
       guest:'Continue as guest',
       ctx_at:'Mention', ctx_quote:'Quote', ctx_dm:'DM', ctx_copy:'Copy', ctx_report:'Report',
       quote_cancel:'Cancel quote',
+      err_domain:'Links to this domain are not allowed.',
+      err_rate_limit:function(s){return 'Please wait '+s+' seconds before sending again.';},
+      err_too_long:function(n){return 'Message exceeds '+n+' characters.';},
+      err_dm_login:'Private messages require a registered account.',
+      err_dm_invalid:'Invalid recipient.',
+      err_dm_too_long:'Private message exceeds 500 characters.',
+      err_user_not_found:'User not found.',
+      err_send_failed:'Failed to send message.',
     }
   };
 
@@ -1412,9 +1428,16 @@
           this._addSysMsg(evt.content || evt.error);
           break;
 
-        case 'error':
-          this._addSysMsg(evt.error || evt.message, true);
+        case 'error': {
+          var errText = evt.error || evt.message || '';
+          if (evt.code) {
+            var tr = this.wt(evt.code);
+            if (typeof tr === 'function') errText = tr(evt.param || '');
+            else if (typeof tr === 'string' && tr !== evt.code) errText = tr;
+          }
+          this._addSysMsg(errText, true);
           break;
+        }
 
         case 'deleted':
           if (evt.id) {
