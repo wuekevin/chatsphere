@@ -520,9 +520,10 @@
       '  background:var(--surface);border:1px solid var(--border);',
       '  display:flex;flex-direction:column;cursor:pointer;',
       '  transition:transform .15s,box-shadow .15s;',
+      '  text-decoration:none;color:inherit;',
       '}',
       '[data-cs="bot-card-item"]:hover{transform:translateY(-2px);box-shadow:0 4px 16px rgba(0,0,0,.3)}',
-      '[data-cs="bot-card-img"]{width:100%;height:100px;object-fit:cover;background:var(--surface-2);display:block}',
+      '[data-cs="bot-card-img"]{width:100%;aspect-ratio:2/3;object-fit:cover;object-position:top center;background:var(--surface-2);display:block}',
       '[data-cs="bot-card-body"]{padding:8px}',
       '[data-cs="bot-card-title"]{font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:4px}',
       '[data-cs="bot-card-desc"]{font-size:11px;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}',
@@ -2316,10 +2317,9 @@
 
       var cardsWrap = h('div', { 'data-cs': 'bot-cards-wrap' });
       cards.forEach(function (card) {
-        var item = h('div', { 'data-cs': 'bot-card-item' });
-        if (card.link) {
-          item.addEventListener('click', function () { window.open(card.link, '_blank'); });
-        }
+        var item = card.link
+          ? h('a', { 'data-cs': 'bot-card-item', 'href': card.link, 'target': '_blank', 'rel': 'noopener noreferrer' })
+          : h('div', { 'data-cs': 'bot-card-item' });
         if (card.poster) {
           var img = h('img', { 'data-cs': 'bot-card-img', 'src': card.poster, 'alt': card.title || '' });
           item.appendChild(img);
