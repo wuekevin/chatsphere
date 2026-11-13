@@ -989,43 +989,52 @@ async function renderDomains() {
   const data = await api.get('/allowed-domains')
   const domains = data.domains || []
   document.getElementById('content').innerHTML = `
-    <div style="max-width:600px">
-      <div class="card" style="margin-bottom:16px">
-        <div class="card-header"><span>允许的域名白名单</span>
-          <button class="btn btn-primary btn-sm" onclick="addDomainPrompt()">+ 添加域名</button>
-        </div>
-        <p style="font-size:12px;color:var(--muted);padding:0 16px 12px">只有在此列表中的域名才能作为链接发送。若列表为空，则不限制。</p>
-        <table class="table"><thead><tr><th>域名</th><th>操作</th></tr></thead><tbody>
-        ${domains.map(d=>`<tr><td>${d.domain}</td><td>
-          <button class="btn btn-danger btn-xs" onclick="deleteDomain(${d.id})">移除</button>
-        </td></tr>`).join('')||'<tr><td colspan="2" style="text-align:center;color:var(--muted)">暂无域名限制</td></tr>'}
-        </tbody></table>
-      </div>
+    <div class="notice notice-info" style="margin-bottom:16px">
+      只有白名单中的域名才能作为链接发送。列表为空则不限制。支持泛域名（填 <code>example.com</code> 自动匹配所有子域名，或填 <code>*.example.com</code> 效果相同）。
+    </div>
+    <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
+      <button class="btn btn-primary" onclick="addDomainPrompt()">+ 添加域名</button>
+    </div>
+    <div class="table-wrap">
+      <div class="table-header"><h3>允许的域名白名单</h3></div>
+      <table>
+        <thead><tr><th>域名</th><th>匹配范围</th><th>操作</th></tr></thead>
+        <tbody>
+        ${domains.map(d=>`<tr>
+          <td><code style="font-size:12px;background:#f3f4f6;padding:2px 6px;border-radius:4px">${esc(d.domain)}</code></td>
+          <td style="font-size:12px;color:#6b7280">${d.domain} 及其所有子域名</td>
+          <td><button class="btn btn-xs" style="background:#fee2e2;color:#991b1b" onclick="deleteDomain(${d.id})">移除</button></td>
+        </tr>`).join('') || '<tr><td colspan="3" class="empty-state"><p>暂无域名限制，所有链接均允许发送</p></td></tr>'}
+        </tbody>
+      </table>
     </div>`
 }
 function addDomainPrompt() {
   modal(`<h3>添加允许域名</h3>
     <div class="form-group"><label>域名</label>
-      <input id="add-domain-val" class="input" placeholder="example.com" autocomplete="off">
+      <input id="add-domain-val" class="input" placeholder="example.com 或 *.example.com" autocomplete="off">
+      <p style="font-size:11px;color:#6b7280;margin-top:4px">填写根域名即可匹配所有子域名，如 <code>youtube.com</code> 同时匹配 <code>www.youtube.com</code>。</p>
     </div>
     <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="closeModal()">取消</button>
+      <button class="btn btn-outline" onclick="closeModal()">取消</button>
       <button class="btn btn-primary" onclick="saveDomain()">添加</button>
     </div>`)
   setTimeout(()=>document.getElementById('add-domain-val')?.focus(),50)
 }
 async function saveDomain() {
-  const domain = (document.getElementById('add-domain-val')?.value||'').trim()
+  let domain = (document.getElementById('add-domain-val')?.value||'').trim().toLowerCase()
   if (!domain) return
+  // normalize *.example.com → example.com
+  if (domain.startsWith('*.')) domain = domain.slice(2)
   await api.post('/allowed-domains', {domain})
   closeModal(); renderDomains()
 }
 function deleteDomain(id) {
-  modal(`<h3>删除域名</h3>
-    <p style="color:var(--muted);font-size:14px;margin-bottom:4px">确认删除此域名白名单规则？</p>
+  modal(`<h3>移除域名</h3>
+    <p style="color:var(--muted);font-size:14px;margin-bottom:4px">确认移除此域名白名单规则？</p>
     <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="closeModal()">取消</button>
-      <button class="btn btn-danger" onclick="confirmDeleteDomain(${id})">删除</button>
+      <button class="btn btn-outline" onclick="closeModal()">取消</button>
+      <button class="btn btn-danger" onclick="confirmDeleteDomain(${id})">移除</button>
     </div>`)
 }
 async function confirmDeleteDomain(id) {
