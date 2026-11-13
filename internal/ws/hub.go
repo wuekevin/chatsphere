@@ -321,6 +321,7 @@ type Event struct {
 	WithUserID  *uint64                `json:"with_user_id,omitempty"`
 	BotCards    []model.BotCard        `json:"bot_cards,omitempty"`
 	MessageID   uint64                 `json:"message_id,omitempty"`
+	CreatedAt   *time.Time             `json:"created_at,omitempty"`
 }
 
 var mentionRe = regexp.MustCompile(`@(\w+)`)

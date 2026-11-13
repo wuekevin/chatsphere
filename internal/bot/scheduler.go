@@ -70,11 +70,13 @@ func (s *Scheduler) fire(b model.BotConfig) {
 	now := time.Now()
 	s.db.Model(&model.BotConfig{}).Where("id = ?", b.ID).Update("last_fired_at", now)
 
+	firedAt := time.Now()
 	evt := ws.Event{
 		Type:        "bot_card",
 		Content:     b.Name,
 		AvatarColor: b.AvatarColor,
 		BotCards:    payload.Cards,
+		CreatedAt:   &firedAt,
 	}
 
 	if b.ChannelID != nil {

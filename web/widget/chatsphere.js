@@ -591,7 +591,9 @@
   }
 
   function timeStr(d) {
-    return new Date(d).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    if (!d) return '';
+    var t = new Date(d);
+    return isNaN(t.getTime()) ? '' : t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   }
 
   function initials(name) {
@@ -1486,6 +1488,7 @@
     // ── Rendering ─────────────────────────────────────────────────────────────
 
     _renderMsg: function (msg) {
+      if (!msg || msg.type === 'bot_card') return;
       if (this._welcomeEl) { this._welcomeEl.remove(); this._welcomeEl = null; }
       var mine  = !!(this.myName && msg.display_name === this.myName);
       var name  = msg.display_name || 'Guest';
