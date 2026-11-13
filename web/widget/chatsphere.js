@@ -1475,10 +1475,9 @@
             this._renderBotCards(evt.content || 'Bot', evt.avatar_color || '', evt.bot_cards);
             if (!this.isOpen) {
               this._incUnread();
-            } else if (this.nearBottom) {
-              this._scrollBottom();
             } else {
-              this._showNewMsgBtn();
+              this._hideNewMsgBtn();
+              this._scrollBottom();
             }
           }
           break;
